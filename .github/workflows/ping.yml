@@ -19,4 +19,6 @@ jobs:
         shell: bash
         run: |
           curl -fsS --connect-timeout 5 --max-time 20 \
-            https://nova-relay.onrender.com/health || true
+            https://nova-relay.onrender.com/health \
+            && echo "HEALTH_OK" || echo "HEALTH_FAIL"
+          exit 0
