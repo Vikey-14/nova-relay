@@ -1,13 +1,22 @@
-from fastapi import FastAPI, HTTPException, Header
+from fastapi import FastAPI, HTTPException, Header, Query
 from typing import Optional
 import os, httpx
 
 app = FastAPI(title="Nova Relay")
 
 # Server-side secrets (set on Render or your host)
-OPENWEATHER = os.getenv("OPENWEATHER_API_KEY", "").strip()
-NEWS        = os.getenv("NEWS_API_KEY", "").strip()
-RELAY_TOKEN = os.getenv("NOVA_RELAY_TOKEN", "").strip()
+OPENWEATHER = os.environ["OPENWEATHER_API_KEY"]
+NEWS        = os.environ["NEWS_API_KEY"]
+
+# ✅ Currency exchange provider key.
+# Keep this ONLY on Render/local relay env, never inside Nova desktop.
+EXCHANGE_RATE_KEY = (
+    os.getenv("EXCHANGERATE_HOST_API_KEY", "").strip()
+    or os.getenv("EXCHANGERATE_API_KEY", "").strip()
+    or os.getenv("EXCHANGE_RATE_API_KEY", "").strip()
+)
+
+RELAY_TOKEN = os.getenv("NOVA_RELAY_TOKEN", "")
 
 
 def _check(tok: Optional[str]):
@@ -56,6 +65,92 @@ async def forecast(city: str, units: str = "metric",
         raise HTTPException(r.status_code, r.text)
     return r.json()
 
+
+@app.get("/currency")
+async def currency(
+    from_code: str = Query(..., alias="from"),
+    to: str = Query(...),
+    amount: float = 1.0,
+    x_nova_key: str | None = Header(default=None),
+):
+    """
+    Currency relay endpoint.
+
+    Nova desktop calls this:
+      /currency?from=USD&to=INR&amount=100
+
+    The relay secretly adds your server-side exchange-rate API key.
+    Users never need their own currency API key.
+    """
+    _check(x_nova_key)
+
+    if not EXCHANGE_RATE_KEY:
+        raise HTTPException(500, "currency API key missing on relay")
+
+    from_curr = (from_code or "").upper().strip()
+    to_curr = (to or "").upper().strip()
+
+    if not from_curr or not to_curr:
+        raise HTTPException(400, "missing from/to currency")
+
+    if amount < 0:
+        raise HTTPException(400, "amount cannot be negative")
+
+    # Same currency conversion: no API call needed.
+    if from_curr == to_curr:
+        return {
+            "ok": True,
+            "provider": "identity",
+            "from": from_curr,
+            "to": to_curr,
+            "amount": amount,
+            "rate": 1.0,
+            "result": amount,
+        }
+
+    url = "https://api.exchangerate.host/convert"
+    params = {
+        "access_key": EXCHANGE_RATE_KEY,
+        "from": from_curr,
+        "to": to_curr,
+        "amount": amount,
+    }
+
+    async with httpx.AsyncClient(timeout=12) as c:
+        r = await c.get(url, params=params)
+
+    if r.status_code != 200:
+        raise HTTPException(r.status_code, r.text)
+
+    data = r.json()
+
+    if data.get("success") is False:
+        raise HTTPException(502, data)
+
+    info = data.get("info") or {}
+    rate = info.get("rate")
+    result = data.get("result")
+
+    if rate is None and result is not None and amount != 0:
+        rate = float(result) / float(amount)
+
+    if result is None and rate is not None:
+        result = float(amount) * float(rate)
+
+    if rate is None or result is None:
+        raise HTTPException(502, {"error": "unexpected currency provider response", "data": data})
+
+    return {
+        "ok": True,
+        "provider": "exchangerate.host",
+        "from": from_curr,
+        "to": to_curr,
+        "amount": amount,
+        "rate": float(rate),
+        "result": float(result),
+    }
+
+    
 @app.get("/news")
 async def news(topic: str = "", country: str = "in", lang: str = "en",
                count: int = 10, x_nova_key: Optional[str] = Header(default=None)):
