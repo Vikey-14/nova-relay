@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Header, Query
 from typing import Optional
-import os, httpx
+import os, httpx, time
 
 app = FastAPI(title="Nova Relay")
 
@@ -17,6 +17,8 @@ EXCHANGE_RATE_KEY = (
 )
 
 RELAY_TOKEN = os.getenv("NOVA_RELAY_TOKEN", "")
+_CURRENCY_RATE_CACHE = {}
+_CURRENCY_RATE_CACHE_TTL_SECONDS = 6 * 60 * 60
 
 
 def _check(tok: Optional[str]):
@@ -35,6 +37,7 @@ def health():
         "ok": True,
         "openweather_configured": bool(OPENWEATHER),
         "news_configured": bool(NEWS),
+        "currency_configured": bool(EXCHANGE_RATE_KEY),
         "auth_enabled": bool(RELAY_TOKEN),
     }
 
@@ -52,6 +55,8 @@ async def weather(city: str, units: str = "metric",
         raise HTTPException(r.status_code, r.text)
     return r.json()
 
+
+
 @app.get("/forecast")
 async def forecast(city: str, units: str = "metric",
                    x_nova_key: Optional[str] = Header(default=None)):
@@ -64,6 +69,7 @@ async def forecast(city: str, units: str = "metric",
     if r.status_code != 200:
         raise HTTPException(r.status_code, r.text)
     return r.json()
+
 
 
 @app.get("/currency")
@@ -107,6 +113,25 @@ async def currency(
             "rate": 1.0,
             "result": amount,
         }
+    
+
+    cache_key = (from_curr, to_curr)
+    cached = _CURRENCY_RATE_CACHE.get(cache_key)
+    now = time.time()
+
+    if cached and (now - cached.get("ts", 0)) <= _CURRENCY_RATE_CACHE_TTL_SECONDS:
+        rate = float(cached["rate"])
+        result = float(amount) * rate
+
+        return {
+            "ok": True,
+            "provider": "exchangerate.host-cache",
+            "from": from_curr,
+            "to": to_curr,
+            "amount": amount,
+            "rate": rate,
+            "result": result,
+        }
 
     url = "https://api.exchangerate.host/convert"
     params = {
@@ -116,8 +141,11 @@ async def currency(
         "amount": amount,
     }
 
-    async with httpx.AsyncClient(timeout=12) as c:
+    timeout = httpx.Timeout(20.0, connect=6.0)
+
+    async with httpx.AsyncClient(timeout=timeout) as c:
         r = await c.get(url, params=params)
+
 
     if r.status_code != 200:
         raise HTTPException(r.status_code, r.text)
@@ -140,6 +168,15 @@ async def currency(
     if rate is None or result is None:
         raise HTTPException(502, {"error": "unexpected currency provider response", "data": data})
 
+    # ✅ Store successful rate so future same-pair conversions are fast.
+    # Example:
+    # First USD -> EUR call fetches from exchangerate.host.
+    # Next USD -> EUR call within 6 hours uses relay cache.
+    _CURRENCY_RATE_CACHE[cache_key] = {
+        "rate": float(rate),
+        "ts": time.time(),
+    }
+
     return {
         "ok": True,
         "provider": "exchangerate.host",
@@ -151,29 +188,181 @@ async def currency(
     }
 
     
+NEWSAPI_LANGUAGES = {
+    "ar",
+    "de",
+    "en",
+    "es",
+    "fr",
+    "he",
+    "it",
+    "nl",
+    "no",
+    "pt",
+    "ru",
+    "sv",
+    "ud",
+    "zh",
+}
+
+NEWSAPI_CATEGORIES = {
+    "general",
+    "business",
+    "entertainment",
+    "health",
+    "science",
+    "sports",
+    "technology",
+}
+
+NEWSAPI_TOP_COUNTRIES = {
+    "ae", "ar", "at", "au", "be", "bg", "br", "ca", "ch",
+    "cn", "co", "cu", "cz", "de", "eg", "fr", "gb", "gr",
+    "hk", "hu", "id", "ie", "il", "in", "it", "jp", "kr",
+    "lt", "lv", "ma", "mx", "my", "ng", "nl", "no", "nz",
+    "ph", "pl", "pt", "ro", "rs", "ru", "sa", "se", "sg",
+    "si", "sk", "th", "tr", "tw", "ua", "us", "ve", "za",
+}
+
+
 @app.get("/news")
-async def news(topic: str = "", country: str = "in", lang: str = "en",
-               count: int = 10, x_nova_key: Optional[str] = Header(default=None)):
+async def news(
+    topic: str = "",
+    country: str = "in",
+    country_name: str = "",
+    category: str = "",
+    lang: str = "en",
+    count: int = 10,
+    x_nova_key: str | None = Header(
+        default=None
+    ),
+):
     _check(x_nova_key)
-    _require_key("NEWS_API_KEY", NEWS)
-    async with httpx.AsyncClient(timeout=12) as c:
+
+    topic = str(
+        topic or ""
+    ).strip()
+
+    country = str(
+        country or ""
+    ).strip().casefold()
+
+    country_name = str(
+        country_name or ""
+    ).strip()
+
+    category = str(
+        category or ""
+    ).strip().casefold()
+
+    lang = str(
+        lang or "en"
+    ).strip().casefold()
+
+    count = min(
+        max(
+            int(count or 10),
+            1,
+        ),
+        20,
+    )
+
+    if category not in NEWSAPI_CATEGORIES:
+        category = ""
+
+    country_supported = bool(
+        country
+        and country
+        in NEWSAPI_TOP_COUNTRIES
+    )
+
+    use_everything = bool(
+        country
+        and not country_supported
+    ) or bool(
+        topic
+        and not country
+        and not category
+    )
+
+    if use_everything:
+        url = (
+            "https://newsapi.org/v2/everything"
+        )
+
+        query_parts: list[str] = []
+
         if topic:
-            url = "https://newsapi.org/v2/everything"
-            params = {
-                "q": topic,
-                "language": lang,
-                "apiKey": NEWS,
-                "pageSize": min(max(count, 1), 20),
-                "sortBy": "publishedAt",
-            }
-        else:
-            url = "https://newsapi.org/v2/top-headlines"
-            params = {
-                "country": country or "in",
-                "apiKey": NEWS,
-                "pageSize": min(max(count, 1), 20),
-            }
-        r = await c.get(url, params=params)
-    if r.status_code != 200:
-        raise HTTPException(r.status_code, r.text)
-    return r.json()
+            query_parts.append(
+                f"({topic})"
+            )
+
+        if country and country_name:
+            query_parts.append(
+                f'"{country_name}"'
+            )
+
+        if category:
+            query_parts.append(
+                category
+            )
+
+        search_query = " AND ".join(
+            query_parts
+        ).strip()
+
+        if not search_query:
+            search_query = (
+                country_name
+                or topic
+                or category
+                or "world news"
+            )
+
+        params = {
+            "q": search_query,
+            "language": (
+                lang
+                if lang in NEWSAPI_LANGUAGES
+                else "en"
+            ),
+            "pageSize": count,
+            "sortBy": "publishedAt",
+        }
+
+    else:
+        url = (
+            "https://newsapi.org/v2/top-headlines"
+        )
+
+        params = {
+            "pageSize": count,
+        }
+
+        if topic:
+            params["q"] = topic
+
+        if country_supported:
+            params["country"] = country
+
+        if category:
+            params["category"] = category
+
+    async with httpx.AsyncClient(
+        timeout=12
+    ) as client:
+        response = await client.get(
+            url,
+            params=params,
+            headers={
+                "X-Api-Key": NEWS,
+            },
+        )
+
+    if response.status_code != 200:
+        raise HTTPException(
+            response.status_code,
+            response.text,
+        )
+
+    return response.json()
