@@ -477,7 +477,17 @@ def _build_news_everything_query(
     # A completely generic worldwide request still
     # needs a valid Everything search query.
     if not parts:
-        return "world news"
+        if (
+            clean_country
+            and clean_country.casefold()
+            == "world"
+        ):
+            return (
+                "(world OR global "
+                "OR international)"
+            )
+
+        return "latest news"
 
     return " AND ".join(
         parts
@@ -595,10 +605,6 @@ async def news(
         params = {
             "q": search_query,
 
-            # Avoid titles that look unrelated because the
-            # topic appeared only inside the article body.
-            "searchIn": "title",
-
             "language": (
                 lang
                 if lang in NEWSAPI_LANGUAGES
@@ -624,6 +630,23 @@ async def news(
             # Latest means newest first.
             "sortBy": "publishedAt",
         }
+
+        # Topic, category and named-country searches
+        # should visibly match the article title.
+        #
+        # A completely generic worldwide request is
+        # intentionally broader and may match the title,
+        # description or available content.
+        if (
+            topic
+            or category
+            or (
+                country_name
+                and country_name.casefold()
+                != "world"
+            )
+        ):
+            params["searchIn"] = "title"
 
     else:
         url = (
