@@ -225,6 +225,72 @@ NEWSAPI_TOP_COUNTRIES = {
 }
 
 
+def _build_news_everything_query(
+    topic: str,
+    country_name: str,
+    category: str,
+) -> str:
+    """
+    Build a strict query for NewsAPI Everything.
+
+    Examples:
+        football
+        -> (football)
+
+        football + Germany
+        -> (football) AND "Germany"
+
+        robotics + technology + Japan
+        -> (robotics) AND technology AND "Japan"
+    """
+
+    parts: list[str] = []
+
+    clean_topic = str(
+        topic or ""
+    ).strip()
+
+    clean_category = str(
+        category or ""
+    ).strip()
+
+    clean_country = str(
+        country_name or ""
+    ).strip()
+
+    if clean_topic:
+        parts.append(
+            f"({clean_topic})"
+        )
+
+    if clean_category:
+        parts.append(
+            clean_category
+        )
+
+    # World is represented by having no country
+    # restriction. Do not require the literal word
+    # "world" for a topic such as worldwide football.
+    if (
+        clean_country
+        and clean_country.casefold()
+        != "world"
+    ):
+        parts.append(
+            f'"{clean_country}"'
+        )
+
+    # A completely generic worldwide request still
+    # needs a valid Everything search query.
+    if not parts:
+        return "world news"
+
+    return " AND ".join(
+        parts
+    ).strip()
+
+
+
 @app.get("/news")
 async def news(
     topic: str = "",
@@ -232,6 +298,7 @@ async def news(
     country_name: str = "",
     category: str = "",
     lang: str = "en",
+    mode: str = "auto",
     count: int = 10,
     x_nova_key: str | None = Header(
         default=None
@@ -259,6 +326,16 @@ async def news(
         lang or "en"
     ).strip().casefold()
 
+    mode = str(
+        mode or "auto"
+    ).strip().casefold()
+
+    if mode not in {
+        "auto",
+        "everything",
+    }:
+        mode = "auto"
+
     count = min(
         max(
             int(count or 10),
@@ -276,48 +353,41 @@ async def news(
         in NEWSAPI_TOP_COUNTRIES
     )
 
-    use_everything = bool(
-        country
-        and not country_supported
-    ) or bool(
-        topic
-        and not country
-        and not category
+    world_scope = bool(
+        country_name
+        and country_name.casefold()
+        == "world"
     )
 
+    no_search_scope = not any(
+        (
+            topic,
+            country,
+            category,
+        )
+    )
+
+    use_everything = bool(
+        mode == "everything"
+        or (
+            country
+            and not country_supported
+        )
+        or world_scope
+        or no_search_scope
+    )
     if use_everything:
         url = (
             "https://newsapi.org/v2/everything"
         )
 
-        query_parts: list[str] = []
-
-        if topic:
-            query_parts.append(
-                f"({topic})"
+        search_query = (
+            _build_news_everything_query(
+                topic,
+                country_name,
+                category,
             )
-
-        if country and country_name:
-            query_parts.append(
-                f'"{country_name}"'
-            )
-
-        if category:
-            query_parts.append(
-                category
-            )
-
-        search_query = " AND ".join(
-            query_parts
-        ).strip()
-
-        if not search_query:
-            search_query = (
-                country_name
-                or topic
-                or category
-                or "world news"
-            )
+        )
 
         params = {
             "q": search_query,
@@ -332,7 +402,10 @@ async def news(
                 else "en"
             ),
             "pageSize": count,
-            "sortBy": "publishedAt",
+            # Prefer the closest matches to the
+            # requested topic over merely choosing
+            # the newest matching article.
+            "sortBy": "relevancy",
         }
         
     else:
@@ -353,6 +426,24 @@ async def news(
         if category:
             params["category"] = category
 
+    endpoint_name = (
+        "everything"
+        if use_everything
+        else "top-headlines"
+    )
+
+    print(
+        "[NEWS_RELAY] REQUEST "
+        f"mode={mode!r} "
+        f"endpoint={endpoint_name!r} "
+        f"topic={topic!r} "
+        f"country={country!r} "
+        f"country_name={country_name!r} "
+        f"category={category!r} "
+        f"count={count!r}",
+        flush=True,
+    )
+
     async with httpx.AsyncClient(
         timeout=12
     ) as client:
@@ -370,4 +461,14 @@ async def news(
             response.text,
         )
 
-    return response.json()
+    payload = response.json()
+
+    if isinstance(
+        payload,
+        dict,
+    ):
+        payload["nova_endpoint"] = (
+            endpoint_name
+        )
+
+    return payload
