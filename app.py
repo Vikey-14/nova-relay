@@ -1,7 +1,19 @@
-from fastapi import FastAPI, HTTPException, Header, Query
+from datetime import (
+    datetime,
+    timedelta,
+    timezone,
+)
+from fastapi import (
+    FastAPI,
+    Header,
+    HTTPException,
+    Query,
+)
 from typing import Optional
-import os, httpx, time
 
+import httpx
+import os
+import time
 app = FastAPI(title="Nova Relay")
 
 # Server-side secrets (set on Render or your host)
@@ -225,6 +237,188 @@ NEWSAPI_TOP_COUNTRIES = {
 }
 
 
+# Nova should not describe old archived articles
+# as the latest news.
+NEWS_FRESH_DAYS = 7
+
+# Top Headlines may not arrive newest-first.
+# Fetch a broad pool, then sort it ourselves.
+NEWS_TOP_FETCH_SIZE = 100
+
+
+def _news_now() -> datetime:
+    return datetime.now(
+        timezone.utc
+    )
+
+
+def _news_cutoff() -> datetime:
+    return _news_now() - timedelta(
+        days=NEWS_FRESH_DAYS
+    )
+
+
+def _news_iso(
+    value: datetime,
+) -> str:
+    return value.astimezone(
+        timezone.utc
+    ).isoformat(
+        timespec="seconds"
+    ).replace(
+        "+00:00",
+        "Z",
+    )
+
+
+def _parse_news_time(
+    value: object,
+) -> Optional[datetime]:
+    raw = str(
+        value or ""
+    ).strip()
+
+    if not raw:
+        return None
+
+    if raw.endswith("Z"):
+        raw = (
+            raw[:-1]
+            + "+00:00"
+        )
+
+    try:
+        parsed = datetime.fromisoformat(
+            raw
+        )
+
+    except Exception:
+        return None
+
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(
+            tzinfo=timezone.utc
+        )
+
+    return parsed.astimezone(
+        timezone.utc
+    )
+
+
+def _prepare_news_payload(
+    payload: dict,
+    count: int,
+) -> dict:
+    """
+    Keep only verifiably recent articles, sort newest
+    first and remove duplicate titles.
+    """
+
+    result = dict(
+        payload
+        if isinstance(
+            payload,
+            dict,
+        )
+        else {}
+    )
+
+    articles = (
+        result.get("articles")
+        or []
+    )
+
+    cutoff = _news_cutoff()
+
+    prepared: list[
+        tuple[
+            datetime,
+            dict,
+        ]
+    ] = []
+
+    seen: set[str] = set()
+
+    for article in articles:
+        if not isinstance(
+            article,
+            dict,
+        ):
+            continue
+
+        title = str(
+            article.get("title")
+            or ""
+        ).strip()
+
+        if (
+            not title
+            or title.casefold()
+            in {
+                "[removed]",
+                "removed",
+                "null",
+                "none",
+            }
+        ):
+            continue
+
+        published = _parse_news_time(
+            article.get(
+                "publishedAt"
+            )
+        )
+
+        # Do not call an article "latest" when its
+        # publication time cannot be verified.
+        if (
+            published is None
+            or published < cutoff
+        ):
+            continue
+
+        key = " ".join(
+            title.casefold().split()
+        )
+
+        if key in seen:
+            continue
+
+        seen.add(key)
+
+        prepared.append(
+            (
+                published,
+                article,
+            )
+        )
+
+    prepared.sort(
+        key=lambda item: item[0],
+        reverse=True,
+    )
+
+    selected = [
+        article
+        for _published, article
+        in prepared[:count]
+    ]
+
+    result["articles"] = selected
+    result["totalResults"] = len(
+        selected
+    )
+
+    result["nova_freshness"] = {
+        "days": NEWS_FRESH_DAYS,
+        "returned": len(selected),
+        "sorted": (
+            "publishedAt_descending"
+        ),
+    }
+
+    return result
+
 def _build_news_everything_query(
     topic: str,
     country_name: str,
@@ -369,6 +563,11 @@ async def news(
 
     use_everything = bool(
         mode == "everything"
+
+        # Topic requests require both relevance
+        # and reliable newest-first ordering.
+        or bool(topic)
+
         or (
             country
             and not country_supported
@@ -376,6 +575,7 @@ async def news(
         or world_scope
         or no_search_scope
     )
+
     if use_everything:
         url = (
             "https://newsapi.org/v2/everything"
@@ -389,11 +589,14 @@ async def news(
             )
         )
 
+        now = _news_now()
+        cutoff = _news_cutoff()
+
         params = {
             "q": search_query,
 
-            # Only accept articles whose visible title
-            # matches the requested topic.
+            # Avoid titles that look unrelated because the
+            # topic appeared only inside the article body.
             "searchIn": "title",
 
             "language": (
@@ -401,20 +604,38 @@ async def news(
                 if lang in NEWSAPI_LANGUAGES
                 else "en"
             ),
-            "pageSize": count,
-            # Prefer the closest matches to the
-            # requested topic over merely choosing
-            # the newest matching article.
-            "sortBy": "relevancy",
+
+            # Explicit freshness window.
+            "from": _news_iso(
+                cutoff
+            ),
+            "to": _news_iso(
+                now
+            ),
+
+            "pageSize": min(
+                max(
+                    count * 4,
+                    20,
+                ),
+                100,
+            ),
+
+            # Latest means newest first.
+            "sortBy": "publishedAt",
         }
-        
+
     else:
         url = (
             "https://newsapi.org/v2/top-headlines"
         )
 
         params = {
-            "pageSize": count,
+            # Top Headlines may not arrive newest-first,
+            # so request a broad pool and sort it below.
+            "pageSize": (
+                NEWS_TOP_FETCH_SIZE
+            ),
         }
 
         if topic:
@@ -463,12 +684,31 @@ async def news(
 
     payload = response.json()
 
-    if isinstance(
+    if not isinstance(
         payload,
         dict,
     ):
-        payload["nova_endpoint"] = (
-            endpoint_name
+        raise HTTPException(
+            502,
+            "invalid news provider payload",
         )
+
+    payload = _prepare_news_payload(
+        payload,
+        count,
+    )
+
+    payload["nova_endpoint"] = (
+        endpoint_name
+    )
+
+    print(
+        "[NEWS_RELAY] RESULT "
+        f"endpoint={endpoint_name!r} "
+        f"returned="
+        f"{len(payload.get('articles') or [])!r} "
+        f"fresh_days={NEWS_FRESH_DAYS!r}",
+        flush=True,
+    )
 
     return payload
