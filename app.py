@@ -321,6 +321,11 @@ async def news(
 
         params = {
             "q": search_query,
+
+            # Only accept articles whose visible title
+            # matches the requested topic.
+            "searchIn": "title",
+
             "language": (
                 lang
                 if lang in NEWSAPI_LANGUAGES
@@ -329,7 +334,7 @@ async def news(
             "pageSize": count,
             "sortBy": "publishedAt",
         }
-
+        
     else:
         url = (
             "https://newsapi.org/v2/top-headlines"
