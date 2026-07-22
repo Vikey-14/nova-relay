@@ -13,7 +13,9 @@ from typing import Optional
 
 import httpx
 import os
+import re
 import time
+import unicodedata
 app = FastAPI(title="Nova Relay")
 
 # Server-side secrets (set on Render or your host)
@@ -246,6 +248,128 @@ NEWS_FRESH_DAYS = 7
 NEWS_TOP_FETCH_SIZE = 100
 
 
+# Topic searches should return actual developments rather
+# than quizzes, trivia pages or viewing/schedule guides.
+#
+# These patterns are deliberately narrow. They reject only
+# titles that clearly advertise interactive content or a
+# utility guide rather than reporting a development.
+NEWS_LOW_VALUE_TOPIC_TITLE_PATTERNS = (
+    # English and shared terms
+    r"\bquiz\b",
+    r"\btrivia\b",
+    r"\bcan you name\b",
+    r"^\s*who am i\b",
+    r"\bguess (?:the|this|which|who)\b",
+    r"\btest your knowledge\b",
+
+    r"\bhow to watch\b",
+    r"\bwhere to watch\b",
+    r"\blive stream(?:ing)?\b",
+    r"\bchannel(?:,| and)? streaming info\b",
+
+    r"\bschedule for (?:the )?rest of\b",
+    r"^\s*when is .{0,100}\bnext "
+    r"(?:match|game|race)\b",
+
+    # Hindi
+    r"क्विज",
+    r"क्या आप .{0,80} नाम बता",
+    r"पहचानिए",
+    r"अपना ज्ञान परख",
+    r"कैसे देखें",
+    r"कहाँ देखें",
+    r"लाइव स्ट्रीम",
+
+    # German
+    r"\bwer bin ich\b",
+    r"\bkannst du .{0,80}\bnennen\b",
+    r"\bteste dein wissen\b",
+    r"\bwie .{0,80}\bsehen\b",
+    r"\bwo .{0,80}\bsehen\b",
+
+    # French
+    r"\bqui suis je\b",
+    r"\bpouvez vous .{0,80}\bnommer\b",
+    r"\btestez vos connaissances\b",
+    r"\bcomment regarder\b",
+    r"\bou regarder\b",
+
+    # Spanish
+    r"\bquien soy\b",
+    r"\bpuedes .{0,80}\bnombrar\b",
+    r"\bpon a prueba tus conocimientos\b",
+    r"\bcomo ver\b",
+    r"\bdonde ver\b",
+)
+
+
+def _news_fold_title(
+    value: object,
+) -> str:
+    """
+    Fold accents in Latin text without damaging scripts
+    such as Hindi Devanagari.
+    """
+
+    output: list[str] = []
+
+    for character in str(
+        value or ""
+    ).casefold():
+        decomposed = unicodedata.normalize(
+            "NFKD",
+            character,
+        )
+
+        first = (
+            decomposed[0]
+            if decomposed
+            else character
+        )
+
+        if (
+            first.isascii()
+            and first.isalnum()
+        ):
+            output.append(first)
+
+        else:
+            output.append(character)
+
+    return " ".join(
+        "".join(output).split()
+    )
+
+
+def _is_low_value_topic_title(
+    title: str,
+    topic: str,
+) -> bool:
+    # Do not apply this to generic country or general
+    # headline requests. It is specifically for a
+    # requested topic such as Cricket or Formula 1.
+    if not str(
+        topic or ""
+    ).strip():
+        return False
+
+    folded = _news_fold_title(
+        title
+    )
+
+    return any(
+        re.search(
+            pattern,
+            folded,
+            flags=re.I | re.UNICODE,
+        )
+        for pattern in (
+            NEWS_LOW_VALUE_TOPIC_TITLE_PATTERNS
+        )
+    )
+
+
 def _news_now() -> datetime:
     return datetime.now(
         timezone.utc
@@ -308,6 +432,7 @@ def _parse_news_time(
 def _prepare_news_payload(
     payload: dict,
     count: int,
+    topic: str = "",
 ) -> dict:
     """
     Keep only verifiably recent articles, sort newest
@@ -360,6 +485,12 @@ def _prepare_news_payload(
                 "null",
                 "none",
             }
+        ):
+            continue
+
+        if _is_low_value_topic_title(
+            title,
+            topic,
         ):
             continue
 
@@ -717,6 +848,7 @@ async def news(
     payload = _prepare_news_payload(
         payload,
         count,
+        topic=topic,
     )
 
     payload["nova_endpoint"] = (
