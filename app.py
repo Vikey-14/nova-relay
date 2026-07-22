@@ -574,10 +574,8 @@ async def news(
     use_everything = bool(
         mode == "everything"
 
-        # Topic requests require both relevance
-        # and reliable newest-first ordering.
-        or bool(topic)
-
+        # Everything is required when Top Headlines
+        # cannot represent the requested scope.
         or (
             country
             and not country_supported
