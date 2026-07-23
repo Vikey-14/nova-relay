@@ -272,7 +272,24 @@ NEWS_LOW_VALUE_TOPIC_TITLE_PATTERNS = (
     r"^\s*when is .{0,100}\bnext "
     r"(?:match|game|race)\b",
 
+    # Roster/listicle pages rather than current developments.
+    r"\b(?:full|complete) list of\b"
+    r".{0,120}\b"
+    r"(?:players?|stars?|teams?|squads?|"
+    r"participants?|entries?|fixtures?)\b",
+
+    r"\b(?:players?|stars?|teams?|squads?)\b"
+    r".{0,120}\b"
+    r"(?:full|complete) list\b",
+
     # Hindi
+    r"(?:खिलाड़ी|खिलाड़ियों|टीम|टीमों|दल)"
+    r".{0,80}"
+    r"(?:पूरी सूची|पूरी लिस्ट|संपूर्ण सूची)",
+
+    r"(?:पूरी सूची|पूरी लिस्ट|संपूर्ण सूची)"
+    r".{0,80}"
+    r"(?:खिलाड़ी|खिलाड़ियों|टीम|टीमों|दल)",
     r"क्विज",
     r"क्या आप .{0,80} नाम बता",
     r"पहचानिए",
@@ -287,6 +304,9 @@ NEWS_LOW_VALUE_TOPIC_TITLE_PATTERNS = (
     r"\bteste dein wissen\b",
     r"\bwie .{0,80}\bsehen\b",
     r"\bwo .{0,80}\bsehen\b",
+    r"\b(?:vollstandige|komplette) liste\b"
+    r".{0,80}\b"
+    r"(?:spieler|teams|kader|teilnehmer)\b",
 
     # French
     r"\bqui suis je\b",
@@ -294,6 +314,9 @@ NEWS_LOW_VALUE_TOPIC_TITLE_PATTERNS = (
     r"\btestez vos connaissances\b",
     r"\bcomment regarder\b",
     r"\bou regarder\b",
+    r"\bliste complete\b"
+    r".{0,80}\b"
+    r"(?:joueurs|equipes|participants)\b",
 
     # Spanish
     r"\bquien soy\b",
@@ -301,6 +324,9 @@ NEWS_LOW_VALUE_TOPIC_TITLE_PATTERNS = (
     r"\bpon a prueba tus conocimientos\b",
     r"\bcomo ver\b",
     r"\bdonde ver\b",
+    r"\blista completa\b"
+    r".{0,80}\b"
+    r"(?:jugadores|equipos|plantillas|participantes)\b",
 )
 
 
