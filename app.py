@@ -11,6 +11,11 @@ from fastapi import (
 )
 from typing import Optional
 from urllib.parse import urlsplit
+
+from news_quality import (
+    prepare_news_payload,
+)
+
 import httpx
 import os
 import re
@@ -1154,10 +1159,11 @@ async def news(
             "invalid news provider payload",
         )
 
-    payload = _prepare_news_payload(
+    payload = prepare_news_payload(
         payload,
         count,
         topic=topic,
+        fresh_days=NEWS_FRESH_DAYS,
     )
 
     payload["nova_endpoint"] = (
