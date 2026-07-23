@@ -263,6 +263,29 @@ NEWS_LOW_VALUE_TOPIC_TITLE_PATTERNS = (
     r"\bguess (?:the|this|which|who)\b",
     r"\btest your knowledge\b",
 
+    # Promotional or advertorial pages rather than
+    # meaningful current developments.
+    r"^\s*(?:holiday|summer|winter)\s+"
+    r"travel\s+with\b",
+
+    r"\blaunch(?:es|ed|ing)?\s+"
+    r"(?:a\s+)?(?:global\s+)?competition\b"
+    r".{0,160}\b"
+    r"(?:fans?|dreams?|prizes?|win)\b",
+
+    r"\b(?:fans?|customers?)['’]?\s+"
+    r"(?:ultimate\s+)?dreams?\b",
+
+    # Basic equivalents for other supported
+    # provider languages.
+    r"^\s*(?:urlaubsreise|voyage|viaje)\s+"
+    r"(?:mit|avec|con)\b",
+
+    r"\b(?:gewinnspiel|concours|concurso)\b"
+    r".{0,120}\b"
+    r"(?:fans?|gewinnen|gagner|ganar|"
+    r"prix|premio|traum|reve|sueno)\b",
+
     # Titles that are only domains or official site pages,
     # rather than reports about a current development.
     r"^\s*(?:www\.)?"
@@ -419,6 +442,115 @@ def _is_low_value_topic_title(
         title
     )
 
+    topic_folded = _news_fold_title(
+        topic
+    )
+
+    # "Formula" alone does not mean Formula 1.
+    # This prevents Formula Sun, Formula E and other
+    # unrelated formula-based competitions from being
+    # returned for a Formula 1 request.
+    formula_one_topics = {
+        "formula 1",
+        "formula one",
+        "f1",
+        "formel 1",
+        "formule 1",
+        "formula uno",
+    }
+
+    if (
+        topic_folded
+        in formula_one_topics
+        and not re.search(
+            r"(?<!\w)"
+            r"(?:"
+            r"(?:formula|formel|formule)\s*"
+            r"(?:1|one|uno)"
+            r"|f1"
+            r")"
+            r"(?!\w)",
+            folded,
+            flags=re.I | re.UNICODE,
+        )
+    ):
+        return True
+
+    # Sports searches may match politicians or election
+    # stories merely because the person once played sport.
+    # Reject those when the requested sport is not visible
+    # anywhere in the title.
+    sport_topics = {
+        "football",
+        "soccer",
+        "cricket",
+        "formula 1",
+        "formula one",
+        "f1",
+
+        "fussball",
+        "fußball",
+        "kricket",
+
+        "futbol",
+        "fútbol",
+        "criquet",
+
+        "फुटबॉल",
+        "क्रिकेट",
+    }
+
+    politics_pattern = (
+        r"(?:"
+        # English
+        r"\bgop\b|"
+        r"\bdemocrat(?:ic)?\b|"
+        r"\brepublican\b|"
+        r"\bprimary\b|"
+        r"\belection\b|"
+        r"\bcandidate\b|"
+        r"\bsenate\b|"
+        r"\bcongress\b|"
+        r"\bparliament\b|"
+        r"\bdistrict\b|"
+        r"\bballot\b|"
+
+        # Hindi
+        r"चुनाव|उम्मीदवार|संसद|निर्वाचन|"
+
+        # German
+        r"\bwahl\b|"
+        r"\bkandidat(?:in)?\b|"
+        r"\bbundestag\b|"
+        r"\bparlament\b|"
+
+        # French
+        r"\belection\b|"
+        r"\bcandidat(?:e)?\b|"
+        r"\bparlement\b|"
+        r"\bcirconscription\b|"
+
+        # Spanish
+        r"\beleccion\b|"
+        r"\bcandidato\b|"
+        r"\bcongreso\b|"
+        r"\bparlamento\b|"
+        r"\bdistrito\b"
+        r")"
+    )
+
+    if (
+        topic_folded in sport_topics
+        and re.search(
+            politics_pattern,
+            folded,
+            flags=re.I | re.UNICODE,
+        )
+        and topic_folded
+        not in folded
+    ):
+        return True
+
     return any(
         re.search(
             pattern,
@@ -429,6 +561,7 @@ def _is_low_value_topic_title(
             NEWS_LOW_VALUE_TOPIC_TITLE_PATTERNS
         )
     )
+
 
 
 def _is_news_homepage_url(
