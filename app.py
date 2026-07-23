@@ -10,7 +10,7 @@ from fastapi import (
     Query,
 )
 from typing import Optional
-
+from urllib.parse import urlsplit
 import httpx
 import os
 import re
@@ -263,6 +263,41 @@ NEWS_LOW_VALUE_TOPIC_TITLE_PATTERNS = (
     r"\bguess (?:the|this|which|who)\b",
     r"\btest your knowledge\b",
 
+    # Titles that are only domains or official site pages,
+    # rather than reports about a current development.
+    r"^\s*(?:www\.)?"
+    r"[a-z0-9-]+"
+    r"(?:\.[a-z0-9-]+)+"
+    r"\s*$",
+
+    # English
+    r"(?:^|[|:–—-]\s*)"
+    r"(?:the\s+)?official\s+"
+    r"(?:site|website|homepage)\s+"
+    r"(?:of|for)\b",
+
+    # Hindi
+    r"(?:^|[|:–—-]\s*)"
+    r"आधिकारिक\s+"
+    r"(?:वेबसाइट|साइट|मुखपृष्ठ)\b",
+
+    # German
+    r"(?:^|[|:–—-]\s*)"
+    r"(?:offizielle\s+"
+    r"(?:website|seite|homepage)|"
+    r"offizieller\s+internetauftritt)\b",
+
+    # French
+    r"(?:^|[|:–—-]\s*)"
+    r"(?:site\s+officiel|"
+    r"page\s+d(?:['’]|\s)+accueil\s+officielle)\b",
+
+    # Spanish
+    r"(?:^|[|:–—-]\s*)"
+    r"(?:sitio\s+oficial|"
+    r"pagina\s+oficial|"
+    r"pagina\s+de\s+inicio\s+oficial)\b",
+
     r"\bhow to watch\b",
     r"\bwhere to watch\b",
     r"\blive stream(?:ing)?\b",
@@ -396,6 +431,56 @@ def _is_low_value_topic_title(
     )
 
 
+def _is_news_homepage_url(
+    value: object,
+) -> bool:
+    """
+    Return True when the provider supplied a publisher's
+    homepage instead of a specific news article URL.
+    """
+
+    raw = str(
+        value or ""
+    ).strip()
+
+    if not raw:
+        return False
+
+    try:
+        parsed = urlsplit(
+            raw
+        )
+
+    except Exception:
+        return False
+
+    path = (
+        parsed.path
+        or "/"
+    ).strip().casefold()
+
+    normalized_path = (
+        path.rstrip("/")
+        or "/"
+    )
+
+    return bool(
+        normalized_path
+        in {
+            "/",
+            "/index",
+            "/index.html",
+            "/index.php",
+            "/default",
+            "/default.aspx",
+            "/home",
+            "/homepage",
+        }
+        and not parsed.query
+    )
+
+
+
 def _news_now() -> datetime:
     return datetime.now(
         timezone.utc
@@ -517,6 +602,13 @@ def _prepare_news_payload(
         if _is_low_value_topic_title(
             title,
             topic,
+        ):
+            continue
+
+        # A publisher homepage is not an individual
+        # article, even when NewsAPI labels it as one.
+        if _is_news_homepage_url(
+            article.get("url")
         ):
             continue
 
