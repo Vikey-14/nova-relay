@@ -286,6 +286,64 @@ NEWS_LOW_VALUE_TOPIC_TITLE_PATTERNS = (
     r"(?:fans?|gewinnen|gagner|ganar|"
     r"prix|premio|traum|reve|sueno)\b",
 
+    # Social-media or personality fluff rather than
+    # a meaningful development in the requested topic.
+    r"\binfluencer\b"
+    r".{0,160}\b"
+    r"(?:pose|challenge|prank|reaction|viral)\b",
+
+    r"\bcontent\s+creator\b"
+    r".{0,160}\b"
+    r"(?:pose|challenge|prank|reaction|viral)\b",
+
+    # Entertainment collaborations, online shows and
+    # platform returns are not sporting developments.
+    r"\bcollaboration\b"
+    r".{0,160}\b"
+    r"(?:youtube|season\s+\d+|series|show)\b",
+
+    r"\b(?:youtube|podcast|online\s+series)\b"
+    r".{0,100}\b"
+    r"(?:returns?|season\s+\d+)\b",
+
+    # Evergreen background articles rather than current news.
+    # Keep this deliberately narrow so a genuine title such as
+    # "Why Formula 1 abandoned Bahrain" is not rejected.
+    r"^\s*why\s+do\s+they\s+call\b",
+    r"^\s*why\s+is\s+it\s+called\b",
+
+    r"^\s*(?:the\s+)?"
+    r"(?:history|origin|origins|meaning)\s+of\b",
+
+    r"\beverything\s+you\s+need\s+to\s+know\b",
+
+    # Hindi
+    r"क्यों\s+कहा\s+जाता\s+है",
+    r"यूट्यूब\s+पर\s+वापसी",
+
+    # German — accents have already been folded.
+    r"^\s*warum\s+"
+    r"(?:nennt|heisst)\b",
+
+    r"\bkehrt\b"
+    r".{0,80}\b"
+    r"(?:zu|auf)\s+youtube\s+zuruck\b",
+
+    # French
+    r"^\s*pourquoi\s+"
+    r"(?:appelle-t-on|s['’ ]appelle)\b",
+
+    r"\brevient\b"
+    r".{0,80}\b"
+    r"sur\s+youtube\b",
+
+    # Spanish
+    r"^\s*por\s+que\s+se\s+llama\b",
+
+    r"\bregresa\b"
+    r".{0,80}\b"
+    r"a\s+youtube\b",
+
     # Titles that are only domains or official site pages,
     # rather than reports about a current development.
     r"^\s*(?:www\.)?"
