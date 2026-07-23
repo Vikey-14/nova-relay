@@ -58,6 +58,39 @@ NON_NEWS_PATTERNS = (
 
     r"\b(?:full|complete) list of\b",
 
+    # Numbered rankings, values and advice articles.
+    # Numbers may appear as digits or words.
+    r"\b(?:top|best)\s+"
+    r"(?:\d+|one|two|three|four|five|six|"
+    r"seven|eight|nine|ten)\b"
+    r".{0,140}\b"
+    r"(?:rankings?|values?|players?|picks?|"
+    r"sleepers?|targets?|options?|projections?|"
+    r"waiver|draft)\b",
+
+    # German, French and Spanish equivalents.
+    r"\b(?:top|besten?|meilleurs?|mejores?)\s+"
+    r"(?:\d+|"
+    r"eins|zwei|drei|vier|funf|sechs|"
+    r"sieben|acht|neun|zehn|"
+    r"un|deux|trois|quatre|cinq|six|"
+    r"sept|huit|neuf|dix|"
+    r"uno|dos|tres|cuatro|cinco|seis|"
+    r"siete|ocho|nueve|diez)\b"
+    r".{0,140}\b"
+    r"(?:ranking|rangliste|classement|"
+    r"valeurs?|valores?|spieler|joueurs?|"
+    r"jugadores?|tipps?|conseils?|consejos?|"
+    r"prognosen?|pronostics?|pronosticos?)\b",
+
+    # Hindi equivalents.
+    r"(?:टॉप|सर्वश्रेष्ठ)\s+"
+    r"(?:\d+|एक|दो|तीन|चार|पाँच|पांच|"
+    r"छह|सात|आठ|नौ|दस)"
+    r".{0,120}"
+    r"(?:रैंकिंग|खिलाड़ी|खिलाड़ियों|"
+    r"वैल्यू|पिक्स|सूची|लिस्ट)",
+
     # Viewing and sports-utility pages.
     r"\b(?:how to watch|where to watch|"
     r"live stream(?:ing)?|streaming info)\b",
@@ -301,7 +334,7 @@ CURRENT_EVENT_PATTERNS = (
     r"partnership|contract)\b",
 
     r"\b(?:today|tonight|this week|latest|"
-    r"breaking|just|now|currently|202[0-9])\b",
+    r"breaking|just|now|currently)\b",
 
     # Hindi.
     r"(?:घोषणा|ऐलान|पुष्टि|कहा|चेतावनी|"
@@ -320,7 +353,7 @@ CURRENT_EVENT_PATTERNS = (
     r"चुनाव|मतदान|नीति|कानून|बजट|"
     r"महंगाई|बाजार|हड़ताल|विरोध|हमला|"
     r"दुर्घटना|आग|बाढ़|भूकंप|तूफान|"
-    r"प्रकोप|आज|अभी|ताज़ा|ताजा|202[0-9])",
+    r"प्रकोप|आज|अभी|ताज़ा|ताजा)",
 
     # German, folded.
     r"\b(?:kundigt an|bestatigt|sagt|warnt|"
@@ -334,7 +367,7 @@ CURRENT_EVENT_PATTERNS = (
     r"eroffnet|ubernimmt|investiert|"
     r"stirbt|verletzt|diagnose|urteil|wahl|"
     r"gesetz|inflation|streik|angriff|"
-    r"unfall|heute|aktuell|202[0-9])\b",
+    r"unfall|heute|aktuell)\b",
 
     # French, folded.
     r"\b(?:annonce|confirme|declare|avertit|"
@@ -345,8 +378,7 @@ CURRENT_EVENT_PATTERNS = (
     r"baisse|chute|ferme|ouvre|investit|"
     r"meurt|blesse|diagnostic|verdict|"
     r"election|loi|inflation|greve|attaque|"
-    r"accident|aujourd hui|actuellement|"
-    r"202[0-9])\b",
+    r"accident|aujourd hui|actuellement)\b",
 
     # Spanish, folded.
     r"\b(?:anuncia|confirma|dice|advierte|"
@@ -357,7 +389,7 @@ CURRENT_EVENT_PATTERNS = (
     r"cierra|abre|adquiere|invierte|muere|"
     r"herido|diagnostico|veredicto|eleccion|"
     r"ley|inflacion|huelga|ataque|accidente|"
-    r"hoy|actualmente|202[0-9])\b",
+    r"hoy|actualmente)\b",
 )
 
 
@@ -415,6 +447,110 @@ TOPIC_ALIAS_GROUPS = (
         "जलवायु परिवर्तन",
     ),
 )
+
+
+SPORTS_SCOPE_ALIASES = {
+    "sports",
+    "sport",
+
+    "football",
+    "soccer",
+    "cricket",
+
+    "formula 1",
+    "formula one",
+    "f1",
+
+    "fussball",
+    "futbol",
+    "kricket",
+    "criquet",
+
+    "खेल",
+    "फुटबॉल",
+    "क्रिकेट",
+}
+
+
+SPORTS_GAMING_PATTERNS = (
+    # Fantasy-sports games and fantasy advice.
+    r"\b(?:fantasy "
+    r"(?:football|cricket|baseball|basketball|"
+    r"hockey|sports?)|"
+    r"daily fantasy|dfs|dream11)\b",
+
+    r"\b(?:fantasy[- ]?"
+    r"(?:fussball|football|sport)|"
+    r"football fantasy|futbol fantasy|"
+    r"fantasy futbol)\b",
+
+    r"(?:फैंटेसी|फैंटसी|ड्रीम11|dream11)"
+    r".{0,100}"
+    r"(?:फुटबॉल|क्रिकेट|खेल|टीम|खिलाड़ी|"
+    r"रैंकिंग|पिक्स|ड्राफ्ट)",
+
+    # Betting and wagering advice.
+    r"\b(?:best bets?|"
+    r"betting (?:picks?|tips?|odds?)|"
+    r"prop bets?|parlays?|moneyline|"
+    r"point spread|spread picks?|"
+    r"over[ /-]?under|sportsbook odds?|"
+    r"wagering advice|bet builder)\b",
+
+    r"\b(?:wetttipps?|wettquoten|sportwetten|"
+    r"paris sportifs?|meilleurs paris|"
+    r"apuestas deportivas?|"
+    r"mejores apuestas|cuotas)\b",
+
+    r"(?:सट्टा|बेटिंग|ऑड्स|odds)"
+    r".{0,100}"
+    r"(?:टिप्स|पिक्स|भविष्यवाणी|"
+    r"दांव|बाज़ी|बाजी)",
+
+    # Fantasy roster-management articles.
+    r"\b(?:waiver wire|start[ /-]?sit|"
+    r"mock draft|draft kit|draft guide|"
+    r"fantasy rankings?|fantasy values?|"
+    r"fantasy projections?|fantasy sleepers?|"
+    r"fantasy picks?)\b",
+)
+
+
+PROMOTIONAL_CONTENT_PATTERNS = (
+    # Branded campaigns, fan competitions and
+    # commercial experiences.
+    r"\b(?:presents?|presenta|presentan|"
+    r"presente|prasentiert|launches?|"
+    r"lanza|lanzan|devoile|stellt vor)\b"
+    r".{0,180}\b"
+    r"(?:campaign|competition|contest|"
+    r"collection|experience|fan event|"
+    r"activation|giveaway|sweepstakes|"
+    r"campana|concurso|coleccion|experiencia|"
+    r"concours|kampagne|gewinnspiel|"
+    r"kollektion|erlebnis)\b",
+
+    r"\b(?:ultimate fan experience|"
+    r"fans?['’] dreams?|"
+    r"win a chance|enter to win)\b",
+
+    r"(?:फैन प्रतियोगिता|प्रचार अभियान|"
+    r"ब्रांड अभियान|इनाम जीतें|"
+    r"जीतने का मौका)",
+)
+
+
+PRESS_RELEASE_SOURCES = {
+    "pr newswire",
+    "business wire",
+    "globenewswire",
+    "accesswire",
+    "ein presswire",
+    "prweb",
+    "newsfile",
+    "media outreach",
+    "openpr",
+}
 
 
 STOPWORDS = {
@@ -639,6 +775,65 @@ def topic_relevant(
     return matched >= required
 
 
+def sports_scope(
+    topic: str,
+    category: str,
+) -> bool:
+    target_topic = fold(
+        topic
+    )
+
+    target_category = fold(
+        category
+    )
+
+    if (
+        target_category
+        in {
+            "sports",
+            "sport",
+            "खेल",
+        }
+    ):
+        return True
+
+    aliases = topic_aliases(
+        topic
+    )
+
+    return any(
+        alias in SPORTS_SCOPE_ALIASES
+        for alias in (
+            aliases
+            | {
+                target_topic,
+            }
+        )
+    )
+
+
+def source_name(
+    article: dict,
+) -> str:
+    source = article.get(
+        "source"
+    )
+
+    if isinstance(
+        source,
+        dict,
+    ):
+        return fold(
+            source.get("name")
+            or ""
+        )
+
+    return fold(
+        source
+        or ""
+    )
+
+
 def homepage_url(
     value: object,
 ) -> bool:
@@ -738,28 +933,31 @@ def current_hits(
         )
     )
 
-    title_hits = sum(
-        bool(
+    # One phrase can match more than one language
+    # pattern. Count title and supporting evidence
+    # once each instead of inflating the score.
+    title_hits = int(
+        any(
             re.search(
                 pattern,
                 title,
                 flags=re.I | re.UNICODE,
             )
+            for pattern
+            in CURRENT_EVENT_PATTERNS
         )
-        for pattern
-        in CURRENT_EVENT_PATTERNS
     )
 
-    supporting_hits = sum(
-        bool(
+    supporting_hits = int(
+        any(
             re.search(
                 pattern,
                 supporting,
                 flags=re.I | re.UNICODE,
             )
+            for pattern
+            in CURRENT_EVENT_PATTERNS
         )
-        for pattern
-        in CURRENT_EVENT_PATTERNS
     )
 
     return (
@@ -833,6 +1031,7 @@ def near_duplicate(
 def rejection_reason(
     article: dict,
     topic: str,
+    category: str = "",
 ) -> str:
     title = str(
         article.get("title")
@@ -850,6 +1049,46 @@ def rejection_reason(
         }
     ):
         return "missing_title"
+
+    combined_text = " ".join(
+        (
+            title,
+            str(
+                article.get("description")
+                or ""
+            ),
+            str(
+                article.get("content")
+                or ""
+            )[:600],
+        )
+    )
+
+    if (
+        source_name(
+            article
+        )
+        in PRESS_RELEASE_SOURCES
+    ):
+        return "press_release_source"
+
+    if matches(
+        combined_text,
+        PROMOTIONAL_CONTENT_PATTERNS,
+    ):
+        return "promotional_content"
+
+    if (
+        sports_scope(
+            topic,
+            category,
+        )
+        and matches(
+            combined_text,
+            SPORTS_GAMING_PATTERNS,
+        )
+    ):
+        return "sports_gaming_or_betting"
 
     if homepage_url(
         article.get("url")
@@ -1087,6 +1326,7 @@ def prepare_news_payload(
     count: int,
     *,
     topic: str = "",
+    category: str = "",
     fresh_days: int = 7,
 ) -> dict:
     result = dict(
@@ -1154,8 +1394,9 @@ def prepare_news_payload(
         reason = rejection_reason(
             article,
             topic,
+            category,
         )
-
+        
         if reason:
             reject(
                 reason

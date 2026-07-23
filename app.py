@@ -1163,6 +1163,7 @@ async def news(
         payload,
         count,
         topic=topic,
+        category=category,
         fresh_days=NEWS_FRESH_DAYS,
     )
 
