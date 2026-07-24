@@ -553,6 +553,82 @@ SPORTS_UTILITY_PATTERNS = (
     r"\b(?:key numbers?|numbers to know|"
     r"stat pack|fact file)\b",
 
+    # Match, game and race timing-reference pages.
+    # These tell readers when an event begins rather
+    # than reporting something that happened.
+    r"^\s*(?:what time|when is|when and where)\b"
+    r".{0,180}\b"
+    r"(?:match|game|race|series|tournament|"
+    r"fixture|final)\b",
+
+    r"\b(?:start time|start times|"
+    r"match timing|match timings|"
+    r"game time|game times|"
+    r"race time|race times|"
+    r"kick[ -]?off time|kick[ -]?off times|"
+    r"tip[ -]?off time|tip[ -]?off times)\b"
+    r".{0,180}\b"
+    r"(?:including|for|in)\s+"
+    r"(?:ist|gmt|utc|bst|cet|cest|"
+    r"est|edt|cst|cdt|mst|mdt|"
+    r"pst|pdt|aest|aedt)\b",
+
+    r"\b(?:full|complete|all)\s+"
+    r"(?:match|game|race|series|tournament|"
+    r"fixture)?\s*"
+    r"(?:timing|timings|schedule|"
+    r"fixtures|calendar)\b",
+
+    r"\b(?:match|game|race|series|tournament)\s+"
+    r"(?:timing|timings)\b",
+
+    r"\b(?:date|dates)\s*(?:,|and|&)\s*"
+    r"(?:time|times|timing|timings)\b",
+
+    r"\b(?:time ?zone|time ?zones|"
+    r"local time|local times)\b",
+
+    r"\b(?:ist|gmt|utc|bst|cet|cest|"
+    r"est|edt|cst|cdt|mst|mdt|"
+    r"pst|pdt|aest|aedt)\b"
+    r".{0,160}\b"
+    r"(?:start time|start times|"
+    r"timing|timings|time ?zone|time ?zones)\b",
+
+    # Hindi and Hinglish timing-reference pages.
+    r"(?:मैच का समय|मैच की टाइमिंग|"
+    r"मैच टाइमिंग|पूरी मैच टाइमिंग|"
+    r"खेल का समय|रेस का समय|"
+    r"शुरुआत का समय|तारीख और समय|"
+    r"समय सारिणी|पूरा शेड्यूल|"
+    r"टाइम ज़ोन|टाइम जोन|समय क्षेत्र)",
+
+    r"\b(?:match|game|race|series)\s+"
+    r"(?:ka|ki)\s+"
+    r"(?:time|timing|samay)\b",
+
+    r"\b(?:full|complete)\s+"
+    r"(?:match|game|race|series)?\s*"
+    r"(?:timing|timings|schedule)\b",
+
+    # German. Text is accent-folded first.
+    r"\b(?:startzeit|anstosszeit|"
+    r"spielzeiten?|rennzeiten?|uhrzeit|"
+    r"zeitzonen?|termine und uhrzeiten|"
+    r"vollstandiger spielplan)\b",
+
+    # French.
+    r"\b(?:heure de debut|heures de debut|"
+    r"horaires? des matchs?|"
+    r"fuseaux horaires?|dates et heures|"
+    r"calendrier complet)\b",
+
+    # Spanish.
+    r"\b(?:hora de inicio|horas de inicio|"
+    r"horarios? de los partidos?|"
+    r"zonas horarias?|fechas y horas|"
+    r"calendario completo)\b",
+
     # Hindi and Hinglish.
     r"(?:पिच रिपोर्ट|मैदान रिपोर्ट|वेन्यू रिपोर्ट|"
     r"मौसम रिपोर्ट|हेड टू हेड|आमने सामने|"
@@ -591,6 +667,57 @@ SPORTS_UTILITY_PATTERNS = (
 )
 
 
+SPORTS_TIMING_CHANGE_NEWS_PATTERNS = (
+    # English: an authority actually changed,
+    # delayed, announced or cancelled a time/date.
+    r"\b(?:change|changes|changed|"
+    r"move|moves|moved|"
+    r"delay|delays|delayed|"
+    r"postpone|postpones|postponed|"
+    r"reschedule|reschedules|rescheduled|"
+    r"announce|announces|announced|"
+    r"confirm|confirms|confirmed|"
+    r"cancel|cancels|cancelled)\b"
+    r".{0,140}\b"
+    r"(?:start time|kick[ -]?off|"
+    r"schedule|fixture|date)\b",
+
+    r"\b(?:start time|kick[ -]?off|"
+    r"schedule|fixture|date)\b"
+    r".{0,140}\b"
+    r"(?:changed|moved|delayed|postponed|"
+    r"rescheduled|announced|confirmed|"
+    r"cancelled)\b",
+
+    # Hindi.
+    r"(?:बदला|बदली|बदले|स्थगित|टला|"
+    r"घोषित|पुष्टि|रद्द)"
+    r".{0,100}"
+    r"(?:समय|टाइमिंग|शेड्यूल|तारीख)",
+
+    # German.
+    r"\b(?:andert|geandert|verschoben|"
+    r"angekundigt|bestatigt|abgesagt)\b"
+    r".{0,120}\b"
+    r"(?:startzeit|anstosszeit|"
+    r"spielplan|termin)\b",
+
+    # French.
+    r"\b(?:change|modifie|reporte|"
+    r"annonce|confirme|annule)\b"
+    r".{0,120}\b"
+    r"(?:heure de debut|horaire|"
+    r"calendrier|date)\b",
+
+    # Spanish.
+    r"\b(?:cambia|cambio|modifica|aplaza|"
+    r"anuncia|confirma|cancela)\b"
+    r".{0,120}\b"
+    r"(?:hora de inicio|horario|"
+    r"calendario|fecha)\b",
+)
+
+
 SPORTS_UTILITY_URL_MARKERS = (
     "/pitch-report/",
     "/venue-report/",
@@ -610,6 +737,20 @@ SPORTS_UTILITY_URL_MARKERS = (
     "/predicted-lineup/",
     "/probable-lineup/",
     "/playing-xi/",
+
+    "/start-time/",
+    "/match-time/",
+    "/match-timings/",
+    "/game-time/",
+    "/race-time/",
+    "/kickoff-time/",
+    "/kick-off-time/",
+    "/what-time/",
+    "/time-zone/",
+    "/time-zones/",
+    "/schedule/",
+    "/fixtures/",
+    "/calendar/",
 )
 
 
@@ -1370,20 +1511,28 @@ def rejection_reason(
     ):
         return "sports_gaming_or_betting"
 
+    is_sports_utility = bool(
+        matches(
+            combined_text,
+            SPORTS_UTILITY_PATTERNS,
+        )
+        or sports_utility_url(
+            article.get("url")
+        )
+    )
+
+    is_real_timing_change = matches(
+        title,
+        SPORTS_TIMING_CHANGE_NEWS_PATTERNS,
+    )
+
     if (
         sports_scope(
             topic,
             category,
         )
-        and (
-            matches(
-                combined_text,
-                SPORTS_UTILITY_PATTERNS,
-            )
-            or sports_utility_url(
-                article.get("url")
-            )
-        )
+        and is_sports_utility
+        and not is_real_timing_change
     ):
         return "sports_utility_or_statistics"
 
