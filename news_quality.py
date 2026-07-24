@@ -867,6 +867,322 @@ PRESS_RELEASE_SOURCES = {
 }
 
 
+# Static articles, guides, advice and reference pages that
+# should not be presented as current News in any category.
+GENERIC_UTILITY_PATTERNS = (
+    # Explanatory/reference formats.
+    r"\b(?:what|all)\s+you\s+need\s+to\s+know\b",
+    r"\b(?:what we know so far|what to know|"
+    r"faq|frequently asked questions)\b",
+
+    # Buying advice and product features.
+    r"\b(?:buying guide|buyers?'? guide|"
+    r"best .{0,80} to buy|should you buy)\b",
+
+    r"\b(?:hands[ -]?on|unboxing|first look)\b",
+
+    r"^[^:|–—]{1,100}\breview\s*[:|–—-]",
+
+    r"(?:^|[|:–—-]\s*)"
+    r"(?:opinion|commentary|editorial|analysis)\b",
+
+    r"\b(?:price|specifications?|specs?|features?|"
+    r"release date|launch date|availability)\b"
+    r".{0,120}\b"
+    r"(?:price|specifications?|specs?|features?|"
+    r"release date|launch date|availability)\b",
+
+    # Sales and shopping pages.
+    r"\b(?:prime day|black friday|cyber monday|"
+    r"festival sale)\b"
+    r".{0,100}\b"
+    r"(?:deals?|discounts?|offers?|sale)\b",
+
+    r"\b(?:best|top)\s+"
+    r"(?:deals?|discounts?|offers?)\b",
+
+    # Finance advice and reference tools.
+    r"\b(?:stocks?|shares?)\s+to\s+buy\b",
+    r"\b(?:buy|sell)\s+or\s+hold\b",
+
+    r"\b(?:ipo\s+gmp|grey market premium|"
+    r"dividend calendar|earnings calendar|"
+    r"economic calendar|mutual fund calculator|"
+    r"sip calculator|emi calculator|"
+    r"loan calculator)\b",
+
+    r"\b(?:price target|stock recommendations?|"
+    r"trading tips?|investment picks?)\b",
+
+    r"\b(?:gold|silver|petrol|diesel|fuel)\s+"
+    r"prices?\s+today\b",
+
+    # Health and lifestyle listicles.
+    r"^\s*(?:\d+|one|two|three|four|five|six|"
+    r"seven|eight|nine|ten)\s+"
+    r"(?:foods?|habits?|exercises?|remedies|"
+    r"signs?|symptoms?|ways?|tips?)\b",
+
+    r"\b(?:doctor|expert|nutritionist|trainer)\s+"
+    r"(?:reveals?|shares?)\s+"
+    r"(?:\d+|one|two|three|four|five|six|"
+    r"seven|eight|nine|ten)\s+"
+    r"(?:foods?|tips?|habits?|ways?|remedies|"
+    r"exercises?)\b",
+
+    r"\b(?:symptoms?|causes?|treatment|prevention)\b"
+    r".{0,120}\b"
+    r"(?:symptoms?|causes?|treatment|prevention)\b",
+
+    r"\b(?:horoscope|zodiac forecast|"
+    r"recipe of the day|daily recipe|"
+    r"meal plan|diet plan|workout plan)\b",
+
+    # Entertainment reference pages.
+    r"\b(?:ott|streaming)\s+release date\b",
+
+    r"\b(?:release date|cast|plot|runtime)\b"
+    r".{0,120}\b"
+    r"(?:release date|cast|plot|runtime)\b",
+
+    r"\b(?:trailer breakdown|ending explained|"
+    r"episode guide|watch order)\b",
+
+    r"\b(?:top|best)\s+"
+    r"(?:\d+|one|two|three|four|five|six|"
+    r"seven|eight|nine|ten)\s+"
+    r"(?:movies?|films?|shows?|series|books?|"
+    r"games?|songs?|albums?|restaurants?|"
+    r"destinations?|places?)\b",
+
+    r"\b(?:rumou?rs?|gossip)\s+"
+    r"(?:roundup|round-up)\b",
+
+    # Education and application utilities.
+    r"\b(?:exam date|admit card|syllabus|"
+    r"answer key|cut[ -]?off marks?|"
+    r"result link|application form)\b",
+
+    r"\b(?:admission|application|career|study|"
+    r"visa)\s+guide\b",
+
+    # Travel and lifestyle.
+    r"\b(?:places to visit|travel itinerary|"
+    r"visa checklist|packing list|home tour|"
+    r"fashion trends?|recipe)\b",
+
+    # Ticketing, static competition data and statistics.
+    r"\b(?:how to buy tickets?|ticket prices?|"
+    r"ticket guide|prize money|purse breakdown|"
+    r"points distribution)\b",
+
+    r"\b(?:tournament|competition|playoff)\s+"
+    r"(?:format|rules|bracket|seedings?)\b",
+
+    r"\b(?:groups?|draw|bracket|seedings?)\s+"
+    r"(?:details|explained|list)\b",
+
+    r"\b(?:career|player|team)\s+"
+    r"(?:stats?|statistics|records?)\b",
+
+    # Match timing and broadcast utilities, even without
+    # explicit time-zone wording.
+    r"\b(?:start time|match time|game time|race time|"
+    r"kick[ -]?off time|tip[ -]?off time|"
+    r"tv channel|broadcast details|"
+    r"telecast details)\b",
+
+    r"\b(?:match|game|race|series|tournament)\s+"
+    r"(?:schedule|fixtures?|calendar|dates?)\b",
+
+    r"\b(?:schedule|fixtures?|calendar)\b"
+    r".{0,100}\b"
+    r"(?:venues?|times?|dates?)\b",
+
+    # Hindi and Hinglish.
+    r"(?:रिव्यू|समीक्षा|खरीदने की गाइड|"
+    r"क्या खरीदें|आईपीओ जीएमपी|"
+    r"ग्रे मार्केट प्रीमियम|राशिफल|रेसिपी|"
+    r"वीजा चेकलिस्ट|यात्रा कार्यक्रम|"
+    r"पैकिंग लिस्ट)",
+
+    r"(?:आज|अभी).{0,40}"
+    r"(?:खरीदने|खरीदें).{0,50}"
+    r"(?:शेयर|स्टॉक)",
+
+    r"(?:शेयर|स्टॉक).{0,50}"
+    r"(?:खरीदने|खरीदें)",
+
+    r"(?:कीमत और (?:फीचर्स|स्पेसिफिकेशन)|"
+    r"रिलीज डेट और कीमत|परीक्षा तिथि|"
+    r"एडमिट कार्ड|सिलेबस|उत्तर कुंजी|"
+    r"टिकट कैसे खरीदें|टिकट की कीमत|"
+    r"पुरस्कार राशि|टूर्नामेंट प्रारूप|"
+    r"मैच का समय|टीवी चैनल)",
+
+    # German. Accents are folded before matching.
+    r"\b(?:testbericht|kaufberatung|aktien kaufen|"
+    r"dividendenkalender|horoskop|rezept|"
+    r"reiseplan|packliste)\b",
+
+    r"\b(?:preis und technische daten|"
+    r"erscheinungsdatum und preis|"
+    r"prufungstermin|eintrittspreise|preisgeld|"
+    r"turnierformat|startzeit|tv sender)\b",
+
+    # French.
+    r"\b(?:guide d achat|actions a acheter|"
+    r"calendrier des dividendes|horoscope|"
+    r"recette|itineraire de voyage|"
+    r"liste de voyage)\b",
+
+    r"\b(?:prix et caracteristiques|"
+    r"date de sortie et prix|"
+    r"date d['’ ]?examen|"
+    r"carte d['’ ]?admission|"
+    r"prix des billets|dotation|"
+    r"format du tournoi|heure de debut|"
+    r"chaine tv)\b",
+
+    # Spanish.
+    r"\b(?:guia de compra|acciones para comprar|"
+    r"calendario de dividendos|horoscopo|"
+    r"receta|itinerario de viaje|"
+    r"lista de equipaje)\b",
+
+    r"\b(?:precio y especificaciones|"
+    r"fecha de lanzamiento y precio|"
+    r"fecha del examen|tarjeta de admision|"
+    r"precio de las entradas|premio|"
+    r"formato del torneo|hora de inicio|"
+    r"canal de tv)\b",
+)
+
+
+# A reference subject remains valid News when an authority
+# has actually announced, changed, delayed, cancelled,
+# approved or revised it.
+GENERIC_REFERENCE_CHANGE_NEWS_PATTERNS = (
+    # English: action before reference.
+    r"\b(?:announce|announces|announced|"
+    r"confirm|confirms|confirmed|"
+    r"change|changes|changed|"
+    r"revise|revises|revised|"
+    r"delay|delays|delayed|"
+    r"postpone|postpones|postponed|"
+    r"cancel|cancels|cancelled|"
+    r"increase|increases|increased|"
+    r"cut|cuts|reduce|reduces|reduced|"
+    r"approve|approves|approved|"
+    r"reject|rejects|rejected|"
+    r"unveil|unveils|unveiled)\b"
+    r".{0,160}\b"
+    r"(?:price|release date|launch date|"
+    r"availability|exam date|admit card|"
+    r"syllabus|answer key|cut[ -]?off|ticket|"
+    r"prize money|format|rules|schedule|"
+    r"fixture|date|start time|kick[ -]?off|"
+    r"broadcast)\b",
+
+    # English: reference before action.
+    r"\b(?:price|release date|launch date|"
+    r"availability|exam date|admit card|"
+    r"syllabus|answer key|cut[ -]?off|ticket|"
+    r"prize money|format|rules|schedule|"
+    r"fixture|date|start time|kick[ -]?off|"
+    r"broadcast)\b"
+    r".{0,160}\b"
+    r"(?:announced|confirmed|changed|revised|"
+    r"delayed|postponed|cancelled|increased|"
+    r"cut|reduced|approved|rejected|unveiled)\b",
+
+    # Hindi: both directions.
+    r"(?:घोषित|घोषणा|पुष्टि|बदला|बदली|बदले|"
+    r"संशोधित|स्थगित|रद्द|बढ़ाया|घटाया|मंजूर)"
+    r".{0,120}"
+    r"(?:कीमत|रिलीज डेट|परीक्षा तिथि|"
+    r"एडमिट कार्ड|सिलेबस|टिकट|पुरस्कार राशि|"
+    r"प्रारूप|नियम|शेड्यूल|समय)",
+
+    r"(?:कीमत|रिलीज डेट|परीक्षा तिथि|"
+    r"एडमिट कार्ड|सिलेबस|टिकट|पुरस्कार राशि|"
+    r"प्रारूप|नियम|शेड्यूल|समय)"
+    r".{0,120}"
+    r"(?:घोषित|घोषणा|पुष्टि|बदला|बदली|बदले|"
+    r"संशोधित|स्थगित|रद्द|बढ़ाया|घटाया|मंजूर)",
+
+    # German: both directions.
+    r"\b(?:angekundigt|bestatigt|geandert|"
+    r"uberarbeitet|verschoben|abgesagt|"
+    r"erhoht|gesenkt|genehmigt)\b"
+    r".{0,140}\b"
+    r"(?:preis|erscheinungsdatum|prufungstermin|"
+    r"ticket|preisgeld|format|regeln|"
+    r"spielplan|startzeit)\b",
+
+    r"\b(?:preis|erscheinungsdatum|prufungstermin|"
+    r"ticket|preisgeld|format|regeln|"
+    r"spielplan|startzeit)\b"
+    r".{0,140}\b"
+    r"(?:angekundigt|bestatigt|geandert|"
+    r"uberarbeitet|verschoben|abgesagt|"
+    r"erhoht|gesenkt|genehmigt)\b",
+
+    # French: both directions.
+    r"\b(?:annonce|confirme|modifie|reporte|"
+    r"annule|augmente|reduit|approuve)\b"
+    r".{0,140}\b"
+    r"(?:prix|date de sortie|date d['’ ]?examen|"
+    r"billet|dotation|format|regles|"
+    r"calendrier|heure de debut)\b",
+
+    r"\b(?:prix|date de sortie|date d['’ ]?examen|"
+    r"billet|dotation|format|regles|"
+    r"calendrier|heure de debut)\b"
+    r".{0,140}\b"
+    r"(?:annonce|confirme|modifie|reporte|"
+    r"annule|augmente|reduit|approuve)\b",
+
+    # Spanish: both directions.
+    r"\b(?:anuncia|confirma|cambia|modifica|"
+    r"aplaza|cancela|aumenta|reduce|aprueba)\b"
+    r".{0,140}\b"
+    r"(?:precio|fecha de lanzamiento|"
+    r"fecha del examen|entrada|premio|"
+    r"formato|reglas|calendario|"
+    r"hora de inicio)\b",
+
+    r"\b(?:precio|fecha de lanzamiento|"
+    r"fecha del examen|entrada|premio|"
+    r"formato|reglas|calendario|"
+    r"hora de inicio)\b"
+    r".{0,140}\b"
+    r"(?:anuncia|confirma|cambia|modifica|"
+    r"aplaza|cancela|aumenta|reduce|aprueba)\b",
+)
+
+
+GENERIC_UTILITY_URL_MARKERS = (
+    "/buying-guide/",
+    "/buyers-guide/",
+    "/deals/",
+    "/horoscope/",
+    "/recipe/",
+    "/recipes/",
+    "/admit-card/",
+    "/syllabus/",
+    "/answer-key/",
+    "/ipo-gmp/",
+    "/stocks-to-buy/",
+    "/stock-recommendations/",
+    "/exam-date/",
+    "/ott-release/",
+    "/ticket-guide/",
+    "/prize-money/",
+    "/tournament-format/",
+)
+
+
 STOPWORDS = {
     "a", "an", "and", "about", "around", "at",
     "for", "from", "in", "of", "on", "the",
@@ -1211,6 +1527,39 @@ def sports_family(
     return ""
 
 
+def generic_utility_url(
+    value: object,
+) -> bool:
+    raw = str(
+        value or ""
+    ).strip().casefold()
+
+    if not raw:
+        return False
+
+    try:
+        path = (
+            "/"
+            + (
+                urlsplit(
+                    raw
+                ).path
+                or ""
+            ).strip(
+                "/"
+            ).casefold()
+            + "/"
+        )
+
+    except Exception:
+        path = raw
+
+    return any(
+        marker in path
+        for marker
+        in GENERIC_UTILITY_URL_MARKERS
+    )
+
 
 def homepage_url(
     value: object,
@@ -1485,10 +1834,13 @@ def rejection_reason(
         )
     )
 
-    if (
-        source_name(
-            article
-        )
+    current_source = source_name(
+        article
+    )
+
+    if any(
+        marker in current_source
+        for marker
         in PRESS_RELEASE_SOURCES
     ):
         return "press_release_source"
@@ -1526,13 +1878,35 @@ def rejection_reason(
         SPORTS_TIMING_CHANGE_NEWS_PATTERNS,
     )
 
+    is_real_reference_change = bool(
+        is_real_timing_change
+        or matches(
+            title,
+            GENERIC_REFERENCE_CHANGE_NEWS_PATTERNS,
+        )
+    )
+
+    if (
+        (
+            matches(
+                title,
+                GENERIC_UTILITY_PATTERNS,
+            )
+            or generic_utility_url(
+                article.get("url")
+            )
+        )
+        and not is_real_reference_change
+    ):
+        return "generic_utility_or_advice"
+    
     if (
         sports_scope(
             topic,
             category,
         )
         and is_sports_utility
-        and not is_real_timing_change
+        and not is_real_reference_change
     ):
         return "sports_utility_or_statistics"
 
@@ -1546,9 +1920,12 @@ def rejection_reason(
     ):
         return "non_news_url"
 
-    if matches(
-        title,
-        NON_NEWS_PATTERNS,
+    if (
+        matches(
+            title,
+            NON_NEWS_PATTERNS,
+        )
+        and not is_real_reference_change
     ):
         return "non_news_title"
 
