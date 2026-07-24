@@ -864,23 +864,62 @@ def _prepare_news_payload(
 
     return result
 
+
+
+NEWS_EVERYTHING_CATEGORY_QUERIES = {
+    "sports": (
+        "(football OR soccer OR cricket OR tennis OR "
+        "badminton OR basketball OR hockey OR baseball OR "
+        "rugby OR golf OR athletics OR Olympics OR "
+        "\"Formula 1\" OR F1 OR MotoGP)"
+    ),
+
+    "technology": (
+        "(technology OR tech OR software OR cybersecurity OR "
+        "semiconductor OR computing OR smartphone OR AI OR "
+        "\"artificial intelligence\")"
+    ),
+
+    "business": (
+        "(business OR economy OR economic OR finance OR "
+        "market OR trade OR company OR investment OR "
+        "stocks OR earnings)"
+    ),
+
+    "science": (
+        "(science OR research OR scientists OR study OR "
+        "space OR NASA OR physics OR biology OR "
+        "astronomy OR climate)"
+    ),
+
+    "health": (
+        "(health OR medical OR medicine OR hospital OR "
+        "disease OR vaccine OR healthcare)"
+    ),
+
+    "entertainment": (
+        "(entertainment OR film OR movie OR cinema OR "
+        "television OR music OR actor OR actress)"
+    ),
+
+    "general": (
+        "(latest OR breaking OR announces OR "
+        "confirms OR reports)"
+    ),
+}
+
+
 def _build_news_everything_query(
     topic: str,
     country_name: str,
     category: str,
 ) -> str:
     """
-    Build a strict query for NewsAPI Everything.
+    Build a broad but structured Everything query.
 
-    Examples:
-        football
-        -> (football)
-
-        football + Germany
-        -> (football) AND "Germany"
-
-        robotics + technology + Japan
-        -> (robotics) AND technology AND "Japan"
+    A category must not require its literal name in every
+    headline. A football or cricket result normally does
+    not contain the literal word "sports".
     """
 
     parts: list[str] = []
@@ -891,7 +930,7 @@ def _build_news_everything_query(
 
     clean_category = str(
         category or ""
-    ).strip()
+    ).strip().casefold()
 
     clean_country = str(
         country_name or ""
@@ -904,12 +943,13 @@ def _build_news_everything_query(
 
     if clean_category:
         parts.append(
-            clean_category
+            NEWS_EVERYTHING_CATEGORY_QUERIES.get(
+                clean_category,
+                clean_category,
+            )
         )
 
-    # World is represented by having no country
-    # restriction. Do not require the literal word
-    # "world" for a topic such as worldwide football.
+    # World scope means no country restriction.
     if (
         clean_country
         and clean_country.casefold()
@@ -919,8 +959,6 @@ def _build_news_everything_query(
             f'"{clean_country}"'
         )
 
-    # A completely generic worldwide request still
-    # needs a valid Everything search query.
     if not parts:
         if (
             clean_country
@@ -937,7 +975,6 @@ def _build_news_everything_query(
     return " AND ".join(
         parts
     ).strip()
-
 
 
 @app.get("/news")
@@ -1080,14 +1117,16 @@ async def news(
         # A completely generic worldwide request is
         # intentionally broader and may match the title,
         # description or available content.
+        # Keep simple topic-only searches strict.
+        #
+        # Category and country searches must also be allowed
+        # to match provider descriptions. Otherwise an India
+        # match result is rejected merely because the visible
+        # title does not contain "India" or "sports".
         if (
             topic
-            or category
-            or (
-                country_name
-                and country_name.casefold()
-                != "world"
-            )
+            and not category
+            and not country_name
         ):
             params["searchIn"] = "title"
 

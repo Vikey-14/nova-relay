@@ -516,11 +516,184 @@ SPORTS_GAMING_PATTERNS = (
 )
 
 
+SPORTS_UTILITY_PATTERNS = (
+    # English: match-reference and statistics pages.
+    r"\b(?:pitch|venue|ground|court|track|course)\s+report\b",
+
+    r"\bweather\s+(?:report|forecast)\b"
+    r".{0,120}\b"
+    r"(?:match|game|race|tournament)\b",
+
+    r"\b(?:head[ -]?to[ -]?head|h2h)\b",
+
+    r"\b(?:average scores?|venue records?|"
+    r"ground records?|stadium records?|"
+    r"course records?)\b",
+
+    r"\b(?:records?|statistics?|stats?)\b"
+    r".{0,120}\b"
+    r"(?:venue|ground|stadium|court|track|"
+    r"course|match|game|race|ahead of)\b",
+
+    r"\b(?:points table|league table|standings|"
+    r"form guide|power rankings?)\b",
+
+    r"\b(?:match|game|race|tournament)\s+preview\b",
+
+    r"\b(?:predicted|probable|possible)\s+"
+    r"(?:xi|11|lineup|team|squad)\b",
+
+    r"\b(?:playing xi|starting xi|"
+    r"predicted lineup|probable lineup)\b",
+
+    r"\b(?:scorecard|live scores?|live updates?|"
+    r"ball[ -]?by[ -]?ball|"
+    r"play[ -]?by[ -]?play)\b",
+
+    r"\b(?:key numbers?|numbers to know|"
+    r"stat pack|fact file)\b",
+
+    # Hindi and Hinglish.
+    r"(?:पिच रिपोर्ट|मैदान रिपोर्ट|वेन्यू रिपोर्ट|"
+    r"मौसम रिपोर्ट|हेड टू हेड|आमने सामने|"
+    r"औसत स्कोर|मैदान के रिकॉर्ड|आंकड़े|"
+    r"स्टैट्स|पॉइंट्स टेबल|अंक तालिका|"
+    r"फॉर्म गाइड|मैच प्रीव्यू|"
+    r"संभावित प्लेइंग इलेवन|संभावित टीम|"
+    r"लाइव स्कोर|लाइव अपडेट|स्कोरकार्ड)",
+
+    r"\b(?:pitch report|venue report|h2h|"
+    r"head to head|average score|points table|"
+    r"match preview|playing xi|live score|"
+    r"scorecard)\b",
+
+    # German. The text is accent-folded before matching.
+    r"\b(?:platzbericht|stadionbericht|"
+    r"wetterbericht|direktvergleich|"
+    r"statistiken?|punktetabelle|tabelle|"
+    r"formkurve|spielvorschau|"
+    r"voraussichtliche aufstellung|"
+    r"live ticker|live ergebnisse?)\b",
+
+    # French.
+    r"\b(?:rapport du terrain|rapport du stade|"
+    r"meteo du match|face a face|statistiques?|"
+    r"classement|forme recente|apercu du match|"
+    r"composition probable|score en direct|"
+    r"feuille de score)\b",
+
+    # Spanish.
+    r"\b(?:informe del campo|informe del estadio|"
+    r"clima del partido|cara a cara|estadisticas?|"
+    r"clasificacion|tabla de puntos|forma reciente|"
+    r"previa del partido|alineacion probable|"
+    r"marcador en vivo|tarjeta de puntuacion)\b",
+)
+
+
+SPORTS_UTILITY_URL_MARKERS = (
+    "/pitch-report/",
+    "/venue-report/",
+    "/ground-report/",
+    "/match-preview/",
+    "/game-preview/",
+    "/race-preview/",
+    "/head-to-head/",
+    "/h2h/",
+    "/statistics/",
+    "/stats/",
+    "/points-table/",
+    "/standings/",
+    "/scorecard/",
+    "/live-score/",
+    "/live-updates/",
+    "/predicted-lineup/",
+    "/probable-lineup/",
+    "/playing-xi/",
+)
+
+
+SPORT_FAMILY_PATTERNS = (
+    (
+        "cricket",
+        (
+            r"\b(?:cricket|icc|ipl|t20i?|odi|"
+            r"test cricket|ashes)\b|क्रिकेट"
+        ),
+    ),
+    (
+        "football",
+        (
+            r"\b(?:football|soccer|fifa|uefa|"
+            r"premier league|champions league|"
+            r"la liga|serie a|bundesliga)\b|फुटबॉल"
+        ),
+    ),
+    (
+        "american_football",
+        r"\b(?:nfl|super bowl|american football)\b",
+    ),
+    (
+        "tennis",
+        (
+            r"\b(?:tennis|atp|wta|wimbledon|"
+            r"roland garros|us open)\b|टेनिस"
+        ),
+    ),
+    (
+        "badminton",
+        r"\b(?:badminton|bwf)\b|बैडमिंटन",
+    ),
+    (
+        "basketball",
+        r"\b(?:basketball|nba|wnba|euroleague)\b|बास्केटबॉल",
+    ),
+    (
+        "hockey",
+        r"\b(?:hockey|nhl|fih)\b|हॉकी",
+    ),
+    (
+        "motorsport",
+        (
+            r"\b(?:formula 1|formula one|f1|motogp|"
+            r"nascar|indycar|rally)\b"
+        ),
+    ),
+    (
+        "baseball",
+        r"\b(?:baseball|mlb|world series)\b|बेसबॉल",
+    ),
+    (
+        "rugby",
+        r"\b(?:rugby|six nations)\b|रग्बी",
+    ),
+    (
+        "golf",
+        r"\b(?:golf|pga|lpga|ryder cup)\b|गोल्फ",
+    ),
+    (
+        "combat",
+        (
+            r"\b(?:boxing|mma|ufc|wrestling)\b|"
+            r"(?:मुक्केबाजी|कुश्ती)"
+        ),
+    ),
+    (
+        "athletics",
+        (
+            r"\b(?:athletics|track and field|"
+            r"marathon|olympics?)\b|एथलेटिक्स"
+        ),
+    ),
+)
+
 PROMOTIONAL_CONTENT_PATTERNS = (
     # Branded campaigns, fan competitions and
     # commercial experiences.
     r"\b(?:presents?|presenta|presentan|"
     r"presente|prasentiert|launches?|"
+    r"unveil(?:s|ed|ing)?|"
+    r"debut(?:s|ed|ing)?|"
     r"lanza|lanzan|devoile|stellt vor)\b"
     r".{0,180}\b"
     r"(?:campaign|competition|contest|"
@@ -834,6 +1007,70 @@ def source_name(
     )
 
 
+def sports_utility_url(
+    value: object,
+) -> bool:
+    raw = str(
+        value or ""
+    ).strip().casefold()
+
+    if not raw:
+        return False
+
+    try:
+        path = (
+            "/"
+            + (
+                urlsplit(
+                    raw
+                ).path
+                or ""
+            ).strip(
+                "/"
+            ).casefold()
+            + "/"
+        )
+
+    except Exception:
+        path = raw
+
+    return any(
+        marker in path
+        for marker
+        in SPORTS_UTILITY_URL_MARKERS
+    )
+
+
+def sports_family(
+    article: dict,
+) -> str:
+    combined = " ".join(
+        (
+            str(
+                article.get("title")
+                or ""
+            ),
+            str(
+                article.get("description")
+                or ""
+            ),
+        )
+    )
+
+    for family, pattern in (
+        SPORT_FAMILY_PATTERNS
+    ):
+        if re.search(
+            pattern,
+            fold(combined),
+            flags=re.I | re.UNICODE,
+        ):
+            return family
+
+    return ""
+
+
+
 def homepage_url(
     value: object,
 ) -> bool:
@@ -1022,9 +1259,52 @@ def near_duplicate(
         ) >= 0.82
     )
 
+    # Some publishers change only a generic organization
+    # word, such as "unit" versus "group".
+    generic_variants = {
+        "a",
+        "an",
+        "the",
+        "its",
+        "unit",
+        "group",
+        "division",
+        "department",
+        "arm",
+        "business",
+        "operation",
+        "operations",
+    }
+
+    first_core = [
+        token
+        for token in re.findall(
+            r"[^\W_]+",
+            fold(first),
+            flags=re.UNICODE,
+        )
+        if token not in generic_variants
+    ]
+
+    second_core = [
+        token
+        for token in re.findall(
+            r"[^\W_]+",
+            fold(second),
+            flags=re.UNICODE,
+        )
+        if token not in generic_variants
+    ]
+
+    generic_variant_story = bool(
+        len(first_core) >= 6
+        and first_core == second_core
+    )
+
     return bool(
         expanded_same_story
         or almost_identical_story
+        or generic_variant_story
     )
 
 
@@ -1089,6 +1369,23 @@ def rejection_reason(
         )
     ):
         return "sports_gaming_or_betting"
+
+    if (
+        sports_scope(
+            topic,
+            category,
+        )
+        and (
+            matches(
+                combined_text,
+                SPORTS_UTILITY_PATTERNS,
+            )
+            or sports_utility_url(
+                article.get("url")
+            )
+        )
+    ):
+        return "sports_utility_or_statistics"
 
     if homepage_url(
         article.get("url")
@@ -1465,6 +1762,91 @@ def prepare_news_payload(
         reverse=True,
     )
 
+    limit = max(
+        1,
+        int(
+            count
+        ),
+    )
+
+    selected_rows: list[
+        tuple[
+            int,
+            datetime,
+            dict,
+        ]
+    ] = []
+
+    # For a generic Sports request, prefer different
+    # sports when qualifying reports are available.
+    if (
+        fold(category)
+        in {
+            "sports",
+            "sport",
+            "खेल",
+        }
+        and not str(
+            topic or ""
+        ).strip()
+    ):
+        seen_families: set[str] = set()
+
+        deferred_rows: list[
+            tuple[
+                int,
+                datetime,
+                dict,
+            ]
+        ] = []
+
+        for row in accepted:
+            family = sports_family(
+                row[2]
+            )
+
+            if (
+                family
+                and family not in seen_families
+            ):
+                selected_rows.append(
+                    row
+                )
+
+                seen_families.add(
+                    family
+                )
+
+            else:
+                deferred_rows.append(
+                    row
+                )
+
+            if len(
+                selected_rows
+            ) >= limit:
+                break
+
+        # Fill remaining positions by quality when there
+        # are not enough distinct sports.
+        if len(
+            selected_rows
+        ) < limit:
+            for row in deferred_rows:
+                selected_rows.append(
+                    row
+                )
+
+                if len(
+                    selected_rows
+                ) >= limit:
+                    break
+
+    else:
+        selected_rows = accepted[
+            :limit
+        ]
+
     selected = [
         article
         for (
@@ -1472,14 +1854,7 @@ def prepare_news_payload(
             _published,
             article,
         )
-        in accepted[
-            :max(
-                1,
-                int(
-                    count
-                ),
-            )
-        ]
+        in selected_rows
     ]
 
     result["articles"] = selected
