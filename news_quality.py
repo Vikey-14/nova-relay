@@ -1183,6 +1183,387 @@ GENERIC_UTILITY_URL_MARKERS = (
 )
 
 
+# Country-scoped News must actually concern the requested
+# country. A publisher's market or website location alone
+# is not sufficient.
+#
+# Countries not listed below still use their canonical
+# country name. The aliases provide common demonyms and
+# alternative names for frequent NewsAPI markets.
+COUNTRY_RELEVANCE_ALIASES = {
+    "ae": (
+        "United Arab Emirates",
+        "UAE",
+        "Emirati",
+    ),
+    "ar": (
+        "Argentina",
+        "Argentine",
+        "Argentinian",
+    ),
+    "at": (
+        "Austria",
+        "Austrian",
+    ),
+    "au": (
+        "Australia",
+        "Australian",
+    ),
+    "be": (
+        "Belgium",
+        "Belgian",
+    ),
+    "bg": (
+        "Bulgaria",
+        "Bulgarian",
+    ),
+    "br": (
+        "Brazil",
+        "Brazilian",
+    ),
+    "bt": (
+        "Bhutan",
+        "Bhutanese",
+    ),
+    "ca": (
+        "Canada",
+        "Canadian",
+    ),
+    "ch": (
+        "Switzerland",
+        "Swiss",
+    ),
+    "cn": (
+        "China",
+        "Chinese",
+    ),
+    "co": (
+        "Colombia",
+        "Colombian",
+    ),
+    "cu": (
+        "Cuba",
+        "Cuban",
+    ),
+    "cz": (
+        "Czechia",
+        "Czech Republic",
+        "Czech",
+    ),
+    "de": (
+        "Germany",
+        "German",
+    ),
+    "eg": (
+        "Egypt",
+        "Egyptian",
+    ),
+    "fr": (
+        "France",
+        "French",
+    ),
+    "gb": (
+        "United Kingdom",
+        "Britain",
+        "British",
+        "England",
+        "English",
+        "Scotland",
+        "Scottish",
+        "Wales",
+        "Welsh",
+        "Northern Ireland",
+    ),
+    "gr": (
+        "Greece",
+        "Greek",
+    ),
+    "hk": (
+        "Hong Kong",
+    ),
+    "hu": (
+        "Hungary",
+        "Hungarian",
+    ),
+    "id": (
+        "Indonesia",
+        "Indonesian",
+    ),
+    "ie": (
+        "Ireland",
+        "Irish",
+    ),
+    "il": (
+        "Israel",
+        "Israeli",
+    ),
+    "in": (
+        "India",
+        "Indian",
+        "Bharat",
+    ),
+    "it": (
+        "Italy",
+        "Italian",
+    ),
+    "jp": (
+        "Japan",
+        "Japanese",
+    ),
+    "kr": (
+        "South Korea",
+        "Korean",
+    ),
+    "lt": (
+        "Lithuania",
+        "Lithuanian",
+    ),
+    "lv": (
+        "Latvia",
+        "Latvian",
+    ),
+    "ma": (
+        "Morocco",
+        "Moroccan",
+    ),
+    "mx": (
+        "Mexico",
+        "Mexican",
+    ),
+    "my": (
+        "Malaysia",
+        "Malaysian",
+    ),
+    "ng": (
+        "Nigeria",
+        "Nigerian",
+    ),
+    "nl": (
+        "Netherlands",
+        "Dutch",
+    ),
+    "no": (
+        "Norway",
+        "Norwegian",
+    ),
+    "nz": (
+        "New Zealand",
+        "New Zealander",
+    ),
+    "ph": (
+        "Philippines",
+        "Filipino",
+        "Philippine",
+    ),
+    "pl": (
+        "Poland",
+        "Polish",
+    ),
+    "pt": (
+        "Portugal",
+        "Portuguese",
+    ),
+    "ro": (
+        "Romania",
+        "Romanian",
+    ),
+    "rs": (
+        "Serbia",
+        "Serbian",
+    ),
+    "ru": (
+        "Russia",
+        "Russian",
+    ),
+    "sa": (
+        "Saudi Arabia",
+        "Saudi",
+    ),
+    "se": (
+        "Sweden",
+        "Swedish",
+    ),
+    "sg": (
+        "Singapore",
+        "Singaporean",
+    ),
+    "si": (
+        "Slovenia",
+        "Slovenian",
+    ),
+    "sk": (
+        "Slovakia",
+        "Slovak",
+    ),
+    "th": (
+        "Thailand",
+        "Thai",
+    ),
+    "tr": (
+        "Turkey",
+        "Türkiye",
+        "Turkish",
+    ),
+    "tw": (
+        "Taiwan",
+        "Taiwanese",
+    ),
+    "ua": (
+        "Ukraine",
+        "Ukrainian",
+    ),
+    "us": (
+        "United States",
+        "United States of America",
+        "USA",
+        "American",
+    ),
+    "ve": (
+        "Venezuela",
+        "Venezuelan",
+    ),
+    "za": (
+        "South Africa",
+        "South African",
+    ),
+}
+
+
+def _country_alias_values(
+    country_code: str,
+    country_name: str,
+) -> tuple[str, ...]:
+    code = str(
+        country_code or ""
+    ).strip().casefold()
+
+    name = str(
+        country_name or ""
+    ).strip()
+
+    if name.casefold() == "world":
+        return ()
+
+    values: list[str] = []
+
+    if name:
+        values.append(
+            name
+        )
+
+    values.extend(
+        COUNTRY_RELEVANCE_ALIASES.get(
+            code,
+            (),
+        )
+    )
+
+    output: list[str] = []
+    seen: set[str] = set()
+
+    for value in values:
+        clean = " ".join(
+            str(
+                value or ""
+            ).split()
+        ).strip()
+
+        folded = fold(
+            clean
+        )
+
+        # Never use dangerous short tokens such as:
+        # in, us, de or es.
+        if (
+            not clean
+            or len(folded) < 3
+            or folded in seen
+        ):
+            continue
+
+        seen.add(
+            folded
+        )
+
+        output.append(
+            clean
+        )
+
+    return tuple(
+        output
+    )
+
+
+def country_query_expression(
+    country_code: str,
+    country_name: str,
+) -> str:
+    aliases = (
+        _country_alias_values(
+            country_code,
+            country_name,
+        )
+    )
+
+    if not aliases:
+        return ""
+
+    return (
+        "("
+        + " OR ".join(
+            f'"{alias}"'
+            for alias in aliases
+        )
+        + ")"
+    )
+
+
+def country_relevant(
+    article: dict,
+    country_code: str,
+    country_name: str,
+) -> bool:
+    aliases = {
+        fold(
+            alias
+        )
+        for alias in (
+            _country_alias_values(
+                country_code,
+                country_name,
+            )
+        )
+    }
+
+    if not aliases:
+        return True
+
+    title = fold(
+        article.get("title")
+        or ""
+    )
+
+    description = fold(
+        article.get("description")
+        or ""
+    )[:800]
+
+    # Deliberately do not inspect the full provider content.
+    # Syndicated content often includes footers, navigation
+    # and unrelated links mentioning many countries.
+    return any(
+        phrase_present(
+            alias,
+            title,
+        )
+        or phrase_present(
+            alias,
+            description,
+        )
+        for alias in aliases
+    )
+
+
 STOPWORDS = {
     "a", "an", "and", "about", "around", "at",
     "for", "from", "in", "of", "on", "the",
@@ -1798,10 +2179,13 @@ def near_duplicate(
     )
 
 
+
 def rejection_reason(
     article: dict,
     topic: str,
     category: str = "",
+    country_code: str = "",
+    country_name: str = "",
 ) -> str:
     title = str(
         article.get("title")
@@ -1928,6 +2312,22 @@ def rejection_reason(
         and not is_real_reference_change
     ):
         return "non_news_title"
+
+    if (
+        str(
+            country_name or ""
+        ).strip()
+        and str(
+            country_name
+        ).casefold()
+        != "world"
+        and not country_relevant(
+            article,
+            country_code,
+            country_name,
+        )
+    ):
+        return "country_mismatch"
 
     target = fold(
         topic
@@ -2144,12 +2544,15 @@ def parse_time(
     )
 
 
+
 def prepare_news_payload(
     payload: dict,
     count: int,
     *,
     topic: str = "",
     category: str = "",
+    country_code: str = "",
+    country_name: str = "",
     fresh_days: int = 7,
 ) -> dict:
     result = dict(
@@ -2214,10 +2617,13 @@ def prepare_news_payload(
             )
             continue
 
+    
         reason = rejection_reason(
             article,
             topic,
             category,
+            country_code,
+            country_name,
         )
         
         if reason:
@@ -2406,6 +2812,9 @@ def prepare_news_payload(
     result["nova_quality"] = {
         "topic": str(
             topic or ""
+        ).strip(),
+        "country": str(
+            country_name or ""
         ).strip(),
         "accepted": len(
             accepted

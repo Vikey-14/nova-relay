@@ -12,7 +12,9 @@ from fastapi import (
 from typing import Optional
 from urllib.parse import urlsplit
 
+
 from news_quality import (
+    country_query_expression,
     prepare_news_payload,
 )
 
@@ -911,6 +913,7 @@ NEWS_EVERYTHING_CATEGORY_QUERIES = {
 
 def _build_news_everything_query(
     topic: str,
+    country: str,
     country_name: str,
     category: str,
 ) -> str:
@@ -932,9 +935,17 @@ def _build_news_everything_query(
         category or ""
     ).strip().casefold()
 
+  
     clean_country = str(
         country_name or ""
     ).strip()
+
+    country_expression = (
+        country_query_expression(
+            country,
+            clean_country,
+        )
+    )
 
     if clean_topic:
         parts.append(
@@ -950,13 +961,9 @@ def _build_news_everything_query(
         )
 
     # World scope means no country restriction.
-    if (
-        clean_country
-        and clean_country.casefold()
-        != "world"
-    ):
+    if country_expression:
         parts.append(
-            f'"{clean_country}"'
+            country_expression
         )
 
     if not parts:
@@ -1053,15 +1060,23 @@ async def news(
         )
     )
 
+    country_scope = bool(
+        country
+        and country_name
+        and country_name.casefold()
+        != "world"
+    )
+
     use_everything = bool(
         mode == "everything"
 
-        # Everything is required when Top Headlines
-        # cannot represent the requested scope.
-        or (
-            country
-            and not country_supported
-        )
+        # NewsAPI's Top Headlines country parameter
+        # represents the publisher/source market, not
+        # necessarily the country the report concerns.
+        #
+        # Country-scoped requests therefore use Everything
+        # and then pass through strict country relevance.
+        or country_scope
         or world_scope
         or no_search_scope
     )
@@ -1074,6 +1089,7 @@ async def news(
         search_query = (
             _build_news_everything_query(
                 topic,
+                country,
                 country_name,
                 category,
             )
@@ -1203,9 +1219,11 @@ async def news(
         count,
         topic=topic,
         category=category,
+        country_code=country,
+        country_name=country_name,
         fresh_days=NEWS_FRESH_DAYS,
     )
-
+    
     payload["nova_endpoint"] = (
         endpoint_name
     )
