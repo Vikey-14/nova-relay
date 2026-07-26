@@ -404,11 +404,10 @@ CURRENT_EVENT_PATTERNS = (
 )
 
 
-TOPIC_ALIAS_GROUPS = (
+TOPIC_EQUIVALENT_GROUPS = (
     (
         "artificial intelligence",
         "ai",
-        "openai",
         "kunstliche intelligenz",
         "künstliche intelligenz",
         "intelligence artificielle",
@@ -478,15 +477,6 @@ TOPIC_ALIAS_GROUPS = (
     (
         "space",
         "outer space",
-        "nasa",
-        "rocket",
-        "rockets",
-        "satellite",
-        "satellites",
-        "spacecraft",
-        "astronomy",
-        "moon mission",
-        "mars mission",
         "weltraum",
         "espace",
         "espacio",
@@ -496,16 +486,55 @@ TOPIC_ALIAS_GROUPS = (
 
     (
         "robotics",
-        "robot",
-        "robots",
         "robotik",
         "robotique",
         "robotica",
         "robótica",
         "रोबोटिक्स",
-        "रोबोट",
     ),
 )
+
+
+# These are related recall terms used only when the user
+# requests the broad canonical subject.
+#
+# Therefore:
+#
+#   "space news"
+#   may search NASA, rockets and satellites.
+#
+# But:
+#
+#   "NASA news"
+#   remains specifically about NASA.
+TOPIC_QUERY_EXPANSIONS = {
+    "artificial intelligence": (
+        "openai",
+        "machine learning",
+        "generative ai",
+        "deep learning",
+    ),
+
+    "space": (
+        "nasa",
+        "rocket",
+        "rockets",
+        "satellite",
+        "satellites",
+        "spacecraft",
+        "astronomy",
+        "moon mission",
+        "mars mission",
+    ),
+
+    "robotics": (
+        "robot",
+        "robots",
+        "humanoid robot",
+        "industrial robot",
+    ),
+}
+
 
 
 SPORTS_SCOPE_ALIASES = {
@@ -1857,6 +1886,28 @@ def phrase_present(
     )
 
 
+def _query_atom(
+    value: str,
+) -> str:
+    clean = " ".join(
+        str(
+            value or ""
+        ).split()
+    ).strip()
+
+    if not clean:
+        return ""
+
+    return (
+        f'"{clean}"'
+        if (
+            " " in clean
+            or not clean.isascii()
+        )
+        else clean
+    )
+
+
 def canonical_topic(
     topic: str,
 ) -> str:
@@ -1873,7 +1924,9 @@ def canonical_topic(
         clean
     )
 
-    for group in TOPIC_ALIAS_GROUPS:
+    for group in (
+        TOPIC_EQUIVALENT_GROUPS
+    ):
         if target in {
             fold(alias)
             for alias in group
@@ -1882,7 +1935,36 @@ def canonical_topic(
                 group[0]
             )
 
+    # Unknown topics are deliberately preserved.
+    #
+    # This is what makes News open-ended rather
+    # than a fixed topic whitelist.
     return clean
+
+
+def _topic_equivalents(
+    canonical: str,
+) -> tuple[str, ...]:
+    target = fold(
+        canonical
+    )
+
+    for group in (
+        TOPIC_EQUIVALENT_GROUPS
+    ):
+        if fold(
+            group[0]
+        ) == target:
+            return tuple(
+                str(item)
+                for item in group
+            )
+
+    return (
+        (canonical,)
+        if canonical
+        else ()
+    )
 
 
 def topic_query_expression(
@@ -1895,47 +1977,66 @@ def topic_query_expression(
     if not canonical:
         return ""
 
-    for group in TOPIC_ALIAS_GROUPS:
-        if fold(group[0]) != fold(
+    equivalent_values = list(
+        _topic_equivalents(
             canonical
+        )
+    )
+
+    expansion_values = list(
+        TOPIC_QUERY_EXPANSIONS.get(
+            fold(
+                canonical
+            ),
+            (),
+        )
+    )
+
+    values: list[str] = []
+    seen: set[str] = set()
+
+    for value in (
+        equivalent_values
+        + expansion_values
+    ):
+        clean = " ".join(
+            str(
+                value or ""
+            ).split()
+        ).strip()
+
+        key = fold(
+            clean
+        )
+
+        if (
+            not clean
+            or key in seen
         ):
             continue
 
-        values: list[str] = []
-        seen: set[str] = set()
+        seen.add(
+            key
+        )
 
-        for value in group:
-            clean = " ".join(
-                str(value).split()
-            ).strip()
+        atom = _query_atom(
+            clean
+        )
 
-            key = fold(
-                clean
+        if atom:
+            values.append(
+                atom
             )
 
-            if (
-                not clean
-                or key in seen
-            ):
-                continue
-
-            seen.add(
-                key
-            )
-
-            if (
-                " " in clean
-                or not clean.isascii()
-            ):
-                values.append(
-                    f'"{clean}"'
-                )
-
-            else:
-                values.append(
-                    clean
-                )
-
+    # Known broad topics use equivalents and optional
+    # recall expansions.
+    #
+    # A specific item such as NASA or OpenAI is not
+    # broadened unless the user requested the broader
+    # subject.
+    if len(
+        values
+    ) > 1:
         return (
             "("
             + " OR ".join(
@@ -1944,11 +2045,59 @@ def topic_query_expression(
             + ")"
         )
 
-    return (
-        f'"{canonical}"'
-        if " " in canonical
-        else canonical
+    clean_atom = _query_atom(
+        canonical
     )
+
+    # Any unknown multiword topic remains dynamic.
+    #
+    # Example:
+    #
+    #   quantum computing
+    #
+    # becomes:
+    #
+    #   ("quantum computing" OR
+    #    (quantum AND computing))
+    significant_tokens = [
+        token
+        for token in re.findall(
+            r"[^\W_]+",
+            canonical,
+            flags=re.UNICODE,
+        )
+        if (
+            len(token) >= 2
+            and fold(
+                token
+            ) not in STOPWORDS
+        )
+    ]
+
+    if (
+        len(
+            significant_tokens
+        ) >= 2
+        and len(
+            significant_tokens
+        ) <= 6
+    ):
+        token_expression = (
+            " AND ".join(
+                _query_atom(
+                    token
+                )
+                for token
+                in significant_tokens
+            )
+        )
+
+        return (
+            f"({clean_atom} OR "
+            f"({token_expression}))"
+        )
+
+    return clean_atom
 
 
 def topic_aliases(
@@ -1958,32 +2107,41 @@ def topic_aliases(
         topic
     )
 
-    target = fold(
-        canonical
-    )
+    if not canonical:
+        return set()
 
-    aliases = (
-        {target}
-        if target
-        else set()
-    )
-
-    for group in TOPIC_ALIAS_GROUPS:
-        if fold(group[0]) != target:
-            continue
-
-        aliases.update(
-            fold(item)
-            for item in group
+    aliases = {
+        fold(
+            item
         )
-
-        break
-
-    return {
-        item
-        for item in aliases
-        if item
+        for item in (
+            _topic_equivalents(
+                canonical
+            )
+        )
+        if fold(
+            item
+        )
     }
+
+    aliases.update(
+        fold(
+            item
+        )
+        for item in (
+            TOPIC_QUERY_EXPANSIONS.get(
+                fold(
+                    canonical
+                ),
+                (),
+            )
+        )
+        if fold(
+            item
+        )
+    )
+
+    return aliases
 
 
 def topic_relevant(
