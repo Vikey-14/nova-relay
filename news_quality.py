@@ -285,6 +285,17 @@ CURRENT_EVENT_PATTERNS = (
     r"enter(?:s|ed)?|plan(?:s|ned)?|"
     r"(?:is|are) (?:likely|set|expected) to)\b",
 
+    r"\b(?:discover(?:s|ed|ing)?|"
+    r"detect(?:s|ed|ing)?|"
+    r"observ(?:e|es|ed|ing)|"
+    r"identif(?:y|ies|ied|ying)|"
+    r"land(?:s|ed|ing)?|"
+    r"orbit(?:s|ed|ing)?|"
+    r"test(?:s|ed|ing)?|"
+    r"develop(?:s|ed|ing)?|"
+    r"release(?:s|d|ing)?|"
+    r"find(?:s|ing)?|found)\b",
+
     r"\b(?:win(?:s|ning)?|won|"
     r"lose(?:s|lost)?|beat(?:s|en)?|"
     r"defeat(?:s|ed)?|qualif(?:y|ies|ied)|"
@@ -398,25 +409,34 @@ TOPIC_ALIAS_GROUPS = (
         "artificial intelligence",
         "ai",
         "openai",
-        "machine learning",
         "kunstliche intelligenz",
+        "künstliche intelligenz",
         "intelligence artificielle",
         "inteligencia artificial",
         "कृत्रिम बुद्धिमत्ता",
         "एआई",
     ),
+
     (
-        "electric vehicle",
         "electric vehicles",
+        "electric vehicle",
         "ev",
         "evs",
         "e mobility",
         "electromobility",
-        "elektroauto",
+        "elektrofahrzeug",
+        "elektrofahrzeuge",
         "vehicule electrique",
+        "vehicules electriques",
+        "véhicule électrique",
+        "véhicules électriques",
         "vehiculo electrico",
+        "vehiculos electricos",
+        "vehículo eléctrico",
+        "vehículos eléctricos",
         "इलेक्ट्रिक वाहन",
     ),
+
     (
         "formula 1",
         "formula one",
@@ -424,27 +444,66 @@ TOPIC_ALIAS_GROUPS = (
         "formel 1",
         "formule 1",
         "formula uno",
+        "फॉर्मूला 1",
     ),
+
     (
         "football",
         "soccer",
         "fussball",
+        "fußball",
         "futbol",
+        "fútbol",
         "फुटबॉल",
+        "फुटबाल",
     ),
+
     (
         "cricket",
         "kricket",
         "criquet",
         "क्रिकेट",
     ),
+
     (
         "climate change",
         "global warming",
         "klimawandel",
         "changement climatique",
         "cambio climatico",
+        "cambio climático",
         "जलवायु परिवर्तन",
+    ),
+
+    (
+        "space",
+        "outer space",
+        "nasa",
+        "rocket",
+        "rockets",
+        "satellite",
+        "satellites",
+        "spacecraft",
+        "astronomy",
+        "moon mission",
+        "mars mission",
+        "weltraum",
+        "espace",
+        "espacio",
+        "अंतरिक्ष",
+        "स्पेस",
+    ),
+
+    (
+        "robotics",
+        "robot",
+        "robots",
+        "robotik",
+        "robotique",
+        "robotica",
+        "robótica",
+        "रोबोटिक्स",
+        "रोबोट",
     ),
 )
 
@@ -851,8 +910,36 @@ PROMOTIONAL_CONTENT_PATTERNS = (
     r"(?:फैन प्रतियोगिता|प्रचार अभियान|"
     r"ब्रांड अभियान|इनाम जीतें|"
     r"जीतने का मौका)",
-)
 
+    # Retail offers and shopping copy.
+    r"\b(?:buy one|get one|get a free|"
+    r"free gift|shop now|order now|"
+    r"add to cart|use code|"
+    r"limited[ -]?time offer|special offer|"
+    r"free shipping|bundle deal)\b",
+
+    r"\b(?:compre uno|obtenga gratis|"
+    r"compre ahora|oferta por tiempo limitado|"
+    r"livraison gratuite|achetez maintenant|"
+    r"jetzt kaufen|kostenlos dazu)\b",
+
+    r"(?:एक खरीदें|मुफ़्त पाएं|मुफ्त पाएं|"
+    r"अभी खरीदें|सीमित समय का ऑफर|"
+    r"फ्री शिपिंग)",
+
+    # Luxury-property showcase features.
+    r"^\s*this\s+[\$€£₹]?"
+    r"[0-9][0-9.,]*\s*"
+    r"(?:million|billion|crore|lakh)?\s*"
+    r"(?:home|house|mansion|villa|"
+    r"apartment|estate)\b",
+
+    r"\b(?:inside|tour)\s+(?:a|the)\s+"
+    r"[\$€£₹]?[0-9][0-9.,]*\s*"
+    r"(?:million|billion|crore|lakh)?\s*"
+    r"(?:home|house|mansion|villa|"
+    r"apartment|estate)\b",
+)
 
 PRESS_RELEASE_SOURCES = {
     "pr newswire",
@@ -1429,6 +1516,84 @@ COUNTRY_RELEVANCE_ALIASES = {
 }
 
 
+GB_HOME_NATION_ALIASES = {
+    "england": (
+        "England",
+        "English",
+    ),
+
+    "scotland": (
+        "Scotland",
+        "Scottish",
+    ),
+
+    "wales": (
+        "Wales",
+        "Welsh",
+    ),
+
+    "northern ireland": (
+        "Northern Ireland",
+        "Northern Irish",
+    ),
+}
+
+
+def _exact_gb_country_key(
+    country_name: str,
+) -> str:
+    target = fold(
+        country_name
+    )
+
+    aliases = {
+        "england": {
+            "england",
+            "english",
+            "angleterre",
+            "inglaterra",
+            "इंग्लैंड",
+            "इंगलैंड",
+        },
+
+        "scotland": {
+            "scotland",
+            "scottish",
+            "schottland",
+            "ecosse",
+            "écosse",
+            "escocia",
+            "स्कॉटलैंड",
+        },
+
+        "wales": {
+            "wales",
+            "welsh",
+            "pays de galles",
+            "gales",
+            "वेल्स",
+        },
+
+        "northern ireland": {
+            "northern ireland",
+            "northern irish",
+            "nordirland",
+            "irlande du nord",
+            "irlanda del norte",
+            "उत्तरी आयरलैंड",
+        },
+    }
+
+    for key, values in aliases.items():
+        if target in {
+            fold(value)
+            for value in values
+        }:
+            return key
+
+    return ""
+
+
 def _country_alias_values(
     country_code: str,
     country_name: str,
@@ -1443,6 +1608,21 @@ def _country_alias_values(
 
     if name.casefold() == "world":
         return ()
+
+    exact_gb_key = (
+        _exact_gb_country_key(
+            name
+        )
+        if code == "gb"
+        else ""
+    )
+
+    if exact_gb_key:
+        return (
+            GB_HOME_NATION_ALIASES[
+                exact_gb_key
+            ]
+        )
 
     values: list[str] = []
 
@@ -1524,9 +1704,7 @@ def country_relevant(
     country_name: str,
 ) -> bool:
     aliases = {
-        fold(
-            alias
-        )
+        fold(alias)
         for alias in (
             _country_alias_values(
                 country_code,
@@ -1538,30 +1716,45 @@ def country_relevant(
     if not aliases:
         return True
 
-    title = fold(
-        article.get("title")
-        or ""
+    combined = " ".join(
+        (
+            fold(
+                article.get("title")
+                or ""
+            ),
+
+            fold(
+                article.get("description")
+                or ""
+            )[:800],
+        )
     )
 
-    description = fold(
-        article.get("description")
-        or ""
-    )[:800]
+    # New England is a US region/team name, not England.
+    if (
+        str(
+            country_code or ""
+        ).casefold() == "gb"
+        and _exact_gb_country_key(
+            country_name
+        ) == "england"
+    ):
+        combined = re.sub(
+            r"(?<!\w)new\s+england(?!\w)",
+            " ",
+            combined,
+            flags=re.I | re.UNICODE,
+        )
 
-    # Deliberately do not inspect the full provider content.
-    # Syndicated content often includes footers, navigation
-    # and unrelated links mentioning many countries.
     return any(
         phrase_present(
             alias,
-            title,
-        )
-        or phrase_present(
-            alias,
-            description,
+            combined,
         )
         for alias in aliases
     )
+
+
 
 
 STOPWORDS = {
@@ -1664,10 +1857,110 @@ def phrase_present(
     )
 
 
+def canonical_topic(
+    topic: str,
+) -> str:
+    clean = " ".join(
+        str(
+            topic or ""
+        ).split()
+    ).strip()
+
+    if not clean:
+        return ""
+
+    target = fold(
+        clean
+    )
+
+    for group in TOPIC_ALIAS_GROUPS:
+        if target in {
+            fold(alias)
+            for alias in group
+        }:
+            return str(
+                group[0]
+            )
+
+    return clean
+
+
+def topic_query_expression(
+    topic: str,
+) -> str:
+    canonical = canonical_topic(
+        topic
+    )
+
+    if not canonical:
+        return ""
+
+    for group in TOPIC_ALIAS_GROUPS:
+        if fold(group[0]) != fold(
+            canonical
+        ):
+            continue
+
+        values: list[str] = []
+        seen: set[str] = set()
+
+        for value in group:
+            clean = " ".join(
+                str(value).split()
+            ).strip()
+
+            key = fold(
+                clean
+            )
+
+            if (
+                not clean
+                or key in seen
+            ):
+                continue
+
+            seen.add(
+                key
+            )
+
+            if (
+                " " in clean
+                or not clean.isascii()
+            ):
+                values.append(
+                    f'"{clean}"'
+                )
+
+            else:
+                values.append(
+                    clean
+                )
+
+        return (
+            "("
+            + " OR ".join(
+                values
+            )
+            + ")"
+        )
+
+    return (
+        f'"{canonical}"'
+        if " " in canonical
+        else canonical
+    )
+
+
 def topic_aliases(
     topic: str,
 ) -> set[str]:
-    target = fold(topic)
+    canonical = canonical_topic(
+        topic
+    )
+
+    target = fold(
+        canonical
+    )
 
     aliases = (
         {target}
@@ -1676,22 +1969,15 @@ def topic_aliases(
     )
 
     for group in TOPIC_ALIAS_GROUPS:
-        folded_group = {
+        if fold(group[0]) != target:
+            continue
+
+        aliases.update(
             fold(item)
             for item in group
-        }
+        )
 
-        if any(
-            target == alias
-            or (
-                len(alias) >= 4
-                and alias in target
-            )
-            for alias in folded_group
-        ):
-            aliases.update(
-                folded_group
-            )
+        break
 
     return {
         item
@@ -2074,108 +2360,282 @@ def current_hits(
     )
 
 
+_DUPLICATE_TOKEN_SYNONYMS = {
+    "announces": "announce",
+    "announced": "announce",
+
+    "appoints": "appoint",
+    "appointed": "appoint",
+    "appointment": "appoint",
+    "starts": "appoint",
+    "started": "appoint",
+
+    "secures": "secure",
+    "secured": "secure",
+
+    "inaugural": "first",
+    "initial": "first",
+    "maiden": "first",
+
+    "investment": "funding",
+    "investments": "funding",
+    "financing": "funding",
+
+    "cuts": "cut",
+    "cutting": "cut",
+    "jobs": "job",
+
+    "promises": "promise",
+}
+
+
+_DUPLICATE_GENERIC_TOKENS = {
+    "a",
+    "an",
+    "the",
+    "its",
+    "of",
+    "to",
+    "for",
+    "from",
+    "in",
+    "on",
+    "at",
+    "with",
+    "and",
+    "as",
+    "after",
+    "before",
+
+    "unit",
+    "group",
+    "division",
+    "department",
+    "arm",
+    "business",
+    "operation",
+    "operations",
+
+    "job",
+    "role",
+    "head",
+    "new",
+    "latest",
+    "update",
+    "report",
+}
+
+
+def _semantic_duplicate_tokens(
+    value: object,
+) -> list[str]:
+    output: list[str] = []
+
+    for token in re.findall(
+        r"[^\W_]+",
+        fold(value),
+        flags=re.UNICODE,
+    ):
+        normalized = (
+            _DUPLICATE_TOKEN_SYNONYMS.get(
+                token,
+                token,
+            )
+        )
+
+        if (
+            len(normalized) < 2
+            or normalized
+            in _DUPLICATE_GENERIC_TOKENS
+        ):
+            continue
+
+        output.append(
+            normalized
+        )
+
+    return output
+
+
+def _named_entities(
+    value: object,
+) -> set[str]:
+    return {
+        token.casefold()
+        for token in re.findall(
+            r"(?<!\w)"
+            r"(?:[A-Z][\w'’-]{2,}|[A-Z]{2,})"
+            r"(?!\w)",
+            str(value or ""),
+            flags=re.UNICODE,
+        )
+        if token.casefold()
+        not in {
+            "the",
+            "this",
+            "that",
+            "why",
+            "how",
+            "what",
+        }
+    }
+
+
+def _conflicting_entities(
+    first: str,
+    second: str,
+) -> bool:
+    first_entities = _named_entities(
+        first
+    )
+
+    second_entities = _named_entities(
+        second
+    )
+
+    shared = (
+        first_entities
+        & second_entities
+    )
+
+    first_only = (
+        first_entities
+        - shared
+    )
+
+    second_only = (
+        second_entities
+        - shared
+    )
+
+    return bool(
+        shared
+        and first_only
+        and second_only
+        and len(first_only) <= 2
+        and len(second_only) <= 2
+    )
+
+
 def near_duplicate(
     first: str,
     second: str,
 ) -> bool:
-    first_words = words(first)
-    second_words = words(second)
+    first_tokens = set(
+        _semantic_duplicate_tokens(
+            first
+        )
+    )
+
+    second_tokens = set(
+        _semantic_duplicate_tokens(
+            second
+        )
+    )
 
     if (
-        not first_words
-        or not second_words
+        not first_tokens
+        or not second_tokens
     ):
         return False
 
-    if fold(first) == fold(second):
+    if first_tokens == second_tokens:
         return True
 
+    if _conflicting_entities(
+        first,
+        second,
+    ):
+        return False
+
     shared = len(
-        first_words
-        & second_words
+        first_tokens
+        & second_tokens
     )
 
     smaller = min(
-        len(first_words),
-        len(second_words),
-    )
-
-    larger = max(
-        len(first_words),
-        len(second_words),
+        len(first_tokens),
+        len(second_tokens),
     )
 
     union = len(
-        first_words
-        | second_words
+        first_tokens
+        | second_tokens
     )
 
-    expanded_same_story = bool(
-        shared >= 5
-        and (
-            shared
-            / smaller
-        ) >= 0.78
-        and (
-            smaller
-            / larger
-        ) <= 0.78
+    containment = (
+        shared
+        / smaller
     )
 
-    almost_identical_story = bool(
-        shared >= 6
-        and (
-            shared
-            / union
-        ) >= 0.82
+    similarity = (
+        shared
+        / union
     )
 
-    # Some publishers change only a generic organization
-    # word, such as "unit" versus "group".
-    generic_variants = {
-        "a",
-        "an",
-        "the",
-        "its",
-        "unit",
-        "group",
-        "division",
-        "department",
-        "arm",
-        "business",
-        "operation",
-        "operations",
-    }
-
-    first_core = [
-        token
-        for token in re.findall(
-            r"[^\W_]+",
-            fold(first),
-            flags=re.UNICODE,
-        )
-        if token not in generic_variants
-    ]
-
-    second_core = [
-        token
-        for token in re.findall(
-            r"[^\W_]+",
-            fold(second),
-            flags=re.UNICODE,
-        )
-        if token not in generic_variants
-    ]
-
-    generic_variant_story = bool(
-        len(first_core) >= 6
-        and first_core == second_core
+    shared_entities = len(
+        _named_entities(first)
+        & _named_entities(second)
     )
 
     return bool(
-        expanded_same_story
-        or almost_identical_story
-        or generic_variant_story
+        (
+            shared >= 4
+            and containment >= 0.70
+            and shared_entities >= 1
+        )
+        or (
+            shared >= 6
+            and similarity >= 0.68
+        )
+    )
+
+
+def articles_near_duplicate(
+    first: dict,
+    second: dict,
+) -> bool:
+    first_title = str(
+        first.get("title")
+        or ""
+    )
+
+    second_title = str(
+        second.get("title")
+        or ""
+    )
+
+    if near_duplicate(
+        first_title,
+        second_title,
+    ):
+        return True
+
+    first_context = " ".join(
+        (
+            first_title,
+
+            str(
+                first.get("description")
+                or ""
+            )[:320],
+        )
+    )
+
+    second_context = " ".join(
+        (
+            second_title,
+
+            str(
+                second.get("description")
+                or ""
+            )[:320],
+        )
+    )
+
+    return near_duplicate(
+        first_context,
+        second_context,
     )
 
 
@@ -2328,6 +2788,10 @@ def rejection_reason(
         )
     ):
         return "country_mismatch"
+
+    topic = canonical_topic(
+        topic
+    )
 
     target = fold(
         topic
@@ -2564,6 +3028,10 @@ def prepare_news_payload(
         else {}
     )
 
+    topic = canonical_topic(
+        topic
+    )
+
     articles = (
         result.get("articles")
         or []
@@ -2593,7 +3061,8 @@ def prepare_news_payload(
         ]
     ] = []
 
-    seen_titles: list[str] = []
+
+    seen_articles: list[dict] = []
     rejected: dict[str, int] = {}
 
     def reject(
@@ -2653,20 +3122,20 @@ def prepare_news_payload(
         ).strip()
 
         if any(
-            near_duplicate(
-                title,
-                existing_title,
+            articles_near_duplicate(
+                article,
+                existing_article,
             )
-            for existing_title
-            in seen_titles
+            for existing_article
+            in seen_articles
         ):
             reject(
                 "duplicate_story"
             )
             continue
 
-        seen_titles.append(
-            title
+        seen_articles.append(
+            article
         )
 
         score = quality_score(

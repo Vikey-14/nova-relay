@@ -14,8 +14,10 @@ from urllib.parse import urlsplit
 
 
 from news_quality import (
+    canonical_topic,
     country_query_expression,
     prepare_news_payload,
+    topic_query_expression,
 )
 
 import httpx
@@ -911,46 +913,49 @@ NEWS_EVERYTHING_CATEGORY_QUERIES = {
 }
 
 
+NEWS_WORLD_EVENT_QUERY = (
+    "(government OR election OR parliament OR president OR "
+    "economy OR markets OR trade OR court OR conflict OR war OR "
+    "climate OR science OR technology OR health OR space OR sports)"
+)
+
+
 def _build_news_everything_query(
     topic: str,
     country: str,
     country_name: str,
     category: str,
 ) -> str:
-    """
-    Build a broad but structured Everything query.
-
-    A category must not require its literal name in every
-    headline. A football or cricket result normally does
-    not contain the literal word "sports".
-    """
-
     parts: list[str] = []
 
-    clean_topic = str(
-        topic or ""
-    ).strip()
+    clean_topic = canonical_topic(
+        topic
+    )
 
     clean_category = str(
         category or ""
     ).strip().casefold()
 
-  
     clean_country = str(
         country_name or ""
     ).strip()
 
-    country_expression = (
-        country_query_expression(
-            country,
-            clean_country,
-        )
+    world_scope = bool(
+        clean_country.casefold()
+        == "world"
     )
 
     if clean_topic:
-        parts.append(
-            f"({clean_topic})"
+        topic_expression = (
+            topic_query_expression(
+                clean_topic
+            )
         )
+
+        if topic_expression:
+            parts.append(
+                topic_expression
+            )
 
     if clean_category:
         parts.append(
@@ -960,28 +965,31 @@ def _build_news_everything_query(
             )
         )
 
-    # World scope means no country restriction.
-    if country_expression:
+    if world_scope:
         parts.append(
-            country_expression
+            NEWS_WORLD_EVENT_QUERY
         )
 
-    if not parts:
-        if (
-            clean_country
-            and clean_country.casefold()
-            == "world"
-        ):
-            return (
-                "(world OR global "
-                "OR international)"
+    else:
+        country_expression = (
+            country_query_expression(
+                country,
+                clean_country,
+            )
+        )
+
+        if country_expression:
+            parts.append(
+                country_expression
             )
 
-        return "latest news"
+    if not parts:
+        return NEWS_WORLD_EVENT_QUERY
 
     return " AND ".join(
         parts
     ).strip()
+
 
 
 @app.get("/news")
@@ -999,9 +1007,10 @@ async def news(
 ):
     _check(x_nova_key)
 
-    topic = str(
-        topic or ""
-    ).strip()
+ 
+    topic = canonical_topic(
+        topic
+    )
 
     country = str(
         country or ""
@@ -1076,6 +1085,7 @@ async def news(
         #
         # Country-scoped requests therefore use Everything
         # and then pass through strict country relevance.
+        or bool(topic)
         or country_scope
         or world_scope
         or no_search_scope
@@ -1101,50 +1111,35 @@ async def news(
         params = {
             "q": search_query,
 
-            "language": (
-                lang
-                if lang in NEWSAPI_LANGUAGES
-                else "en"
-            ),
-
-            # Explicit freshness window.
             "from": _news_iso(
                 cutoff
             ),
+
             "to": _news_iso(
                 now
             ),
 
+            # Fetch enough candidates before strict quality,
+            # country and duplicate filtering.
             "pageSize": min(
                 max(
-                    count * 4,
-                    20,
+                    count * 8,
+                    40,
                 ),
                 100,
             ),
 
-            # Latest means newest first.
             "sortBy": "publishedAt",
         }
 
-        # Topic, category and named-country searches
-        # should visibly match the article title.
-        #
-        # A completely generic worldwide request is
-        # intentionally broader and may match the title,
-        # description or available content.
-        # Keep simple topic-only searches strict.
-        #
-        # Category and country searches must also be allowed
-        # to match provider descriptions. Otherwise an India
-        # match result is rejected merely because the visible
-        # title does not contain "India" or "sports".
-        if (
-            topic
-            and not category
-            and not country_name
-        ):
-            params["searchIn"] = "title"
+        # Topic expressions contain multilingual aliases.
+        # Do not force one provider language for them.
+        if not topic:
+            params["language"] = (
+                lang
+                if lang in NEWSAPI_LANGUAGES
+                else "en"
+            )
 
     else:
         url = (
