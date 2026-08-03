@@ -748,29 +748,51 @@ SPORTS_ANALYSIS_FEATURE_PATTERNS = (
 )
 
 
-SPORTS_COMPETITIVE_SUBJECT_PATTERNS = (
-    # Generic competitive-sports vocabulary. This is not a
-    # sport whitelist: any sport can qualify through these
-    # roles, competitions and event structures.
-    r"\b(?:sports?|sporting|athletes?|players?|teams?|clubs?|"
-    r"coaches?|managers?|captains?|squads?|federations?|"
-    r"associations?|stadiums?|tournaments?|championships?|"
-    r"leagues?|cups?|matches?|games?|medals?|podiums?|"
-    r"finals?|semi[ -]?finals?|seasons?|fixtures?|"
-    r"friendly|friendlies|transfers?|signings?|loans?|"
-    r"bowlers?|batters?|batsmen|strikers?|defenders?|"
-    r"midfielders?|goalkeepers?|judokas?|boxers?|wrestlers?|"
-    r"swimmers?|cyclists?|runners?|gymnasts?|shooters?)\b",
+SPORTS_QUOTE_COMMENTARY_PATTERNS = (
+    # Opinion-led player and coach quotes are not the
+    # underlying sporting development.
+    r"\b(?:warns?|believes?|insists?|urges?|backs?|tips?|"
+    r"predicts?|expects?)\b"
+    r".{0,140}\b"
+    r"(?:must improve|need(?:s)? to improve|should improve|"
+    r"can win|will win|to win|title challenge|"
+    r"favourites?|favorites?)\b",
+)
 
-    # Common sport names supplement the generic structures;
-    # they do not limit which sports are accepted.
+
+SPORTS_COMPETITIVE_SUBJECT_PATTERNS = (
+    # Generic competitive-sports vocabulary. This branch is
+    # intentionally sport-agnostic, so a sport does not need
+    # to appear in a hardcoded allow-list.
+    r"\b(?:sports?|sporting|athletes?|players?|teams?|clubs?|"
+    r"competitors?|coaches?|managers?|captains?|squads?|"
+    r"federations?|associations?|stadiums?|tournaments?|"
+    r"championships?|leagues?|cups?|matches?|games?|medals?|"
+    r"podiums?|finals?|semi[ -]?finals?|seasons?|fixtures?|"
+    r"friendly|friendlies|transfers?|signings?|loans?|"
+    r"internationals?|champions?|medalists?|rookies?|stars?|"
+    r"riders?|drivers?|fighters?|racers?|skaters?|golfers?|"
+    r"judokas?|boxers?|wrestlers?|swimmers?|cyclists?|"
+    r"runners?|gymnasts?|shooters?|bowlers?|batters?|batsmen|"
+    r"strikers?|defenders?|midfielders?|goalkeepers?)\b",
+
+    # Competition structures and scoring terms also provide
+    # sport evidence when the title names only an athlete
+    # or club.
+    r"\b(?:goals?|wickets?|runs?|home runs?|homers?|"
+    r"touchdowns?|tries|sets?|rounds?|bouts?|heats?|relays?|"
+    r"laps?|pole position|grid|drafts?|trades?|contracts?|"
+    r"grand prix|open)\b",
+
+    # Common sport names improve recall, but they supplement
+    # the generic branches above and do not form a whitelist.
     r"\b(?:football|soccer|cricket|tennis|badminton|"
     r"basketball|hockey|baseball|rugby|golf|athletics|"
     r"judo|boxing|wrestling|swimming|cycling|gymnastics|"
     r"archery|shooting|weightlifting|rowing|fencing|squash|"
-    r"volleyball|handball|kabaddi|bowls|skating|skiing|"
-    r"formula 1|formula one|f1|motogp|horse racing|"
-    r"equestrian|jockey)\b",
+    r"volleyball|handball|kabaddi|bowls|skating|skiing|sumo|"
+    r"table tennis|motorsport|formula 1|formula one|f1|"
+    r"motogp|horse racing|equestrian|jockey)\b",
 
     # Hindi.
     r"(?:खेल|खिलाड़ी|टीम|क्लब|कोच|कप्तान|लीग|"
@@ -2511,9 +2533,31 @@ def country_relevant(
             )
         )
 
+        # An article explicitly headed by another sovereign
+        # country is not a Scotland, England, Wales or Northern
+        # Ireland story merely because the event happens there.
+        other_country_title_aliases = {
+            fold(alias)
+            for code, values in (
+                COUNTRY_RELEVANCE_ALIASES.items()
+            )
+            if code != "gb"
+            for alias in values
+            if fold(alias)
+        }
+
+        other_country_title_hits = mention_count(
+            title,
+            other_country_title_aliases,
+        )
+
         if (
-            other_title_hits
+            (
+                other_title_hits
+                or other_country_title_hits
+            )
             and not requested_title_hits
+            and not sports_description_hits
         ):
             return False
 
@@ -2536,19 +2580,33 @@ def country_relevant(
         # Games stories from becoming Scotland headlines.
         return base_description_hits >= 2
 
-    # Normal countries require direct title/description
-    # evidence. Body-only evidence needs two mentions because
-    # article bodies routinely mention unrelated countries.
+
+    # Normal countries prefer direct title/description
+    # evidence. For a verified sporting development, one
+    # country or demonym mention in the body is sufficient:
+    # sports headlines often name only the athlete or club in
+    # the title and say "Japanese", "Indian", "German", etc.
+    # once in the article body.
+    body_country_hits = (
+        base_content_hits
+        + sports_content_hits
+    )
+
     return bool(
         base_title_hits
         or base_description_hits
         or sports_title_hits
         or sports_description_hits
         or (
-            base_content_hits
-            + sports_content_hits
-        ) >= 2
+            sports_request
+            and body_country_hits >= 1
+            and sports_development_relevant(
+                article
+            )
+        )
+        or body_country_hits >= 2
     )
+
 
 
 STOPWORDS = {
@@ -3701,6 +3759,10 @@ def rejection_reason(
                 title,
                 SPORTS_ANALYSIS_FEATURE_PATTERNS,
             )
+            or matches(
+                title,
+                SPORTS_QUOTE_COMMENTARY_PATTERNS,
+            )
         )
     ):
         return "sports_reaction_or_personality"
@@ -3927,10 +3989,25 @@ def rejection_reason(
         title_hits == 0
         and supporting_hits == 0
     ):
+        # Sports requests have already passed the dedicated
+        # direct-development gate above. Do not reject a valid
+        # transfer bid, call-up, comeback or similar event only
+        # because the generic news verb table lacks that exact
+        # sporting verb.
+        if (
+            sports_scope(
+                topic,
+                category,
+            )
+            and sports_development_relevant(
+                article
+            )
+        ):
+            return ""
+
         return "no_current_event_signal"
 
     return ""
-
 
 def quality_score(
     article: dict,
