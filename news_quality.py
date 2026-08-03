@@ -14,16 +14,37 @@ import unicodedata
 NON_NEWS_PATTERNS = (
     # Question-style, interactive and quiz content.
     r"\?\s*$",
+
+    # Teaser-led titles such as:
+    #
+    #   Green with envy? How...
+    #   A major mistake? Why...
+    #
+    # are feature or explanatory articles rather than
+    # direct reports of a current development.
+    r"\?\s+(?:what|why|how|who|where|when|"
+    r"क्या|क्यों|कैसे|कौन|कब|कहाँ|"
+    r"was|warum|wie|wer|wann|wo|"
+    r"quoi|pourquoi|comment|qui|quand|ou|"
+    r"que|por que|como|quien|cuando|donde)\b",
+
     r"\b(?:quiz|trivia|can you name|who am i|"
     r"guess (?:the|this|which|who)|test your knowledge)\b",
 
-    # English evergreen explanations and background articles.
-    r"^\s*(?:what (?:is|are|does)|"
-    r"how (?:does|do|is|are|can)|"
-    r"who is|should (?:you|i|we)|will your)\b",
-
-    r"^\s*why (?:do|is .{0,100}\bcalled|"
-    r"do they call)\b",
+    # English evergreen explanations, speculative questions
+    # and retrospective analysis.
+    #
+    # A genuine current report should state the event:
+    #
+    #   England appoints Stephen Fleming as coach
+    #
+    # rather than analysing it:
+    #
+    #   Why England picked Stephen Fleming
+    #   How England selected its new coach
+    #   What the appointment means for England
+    r"^\s*(?:what|why|how|who|where|when)\b",
+    r"^\s*(?:should (?:you|i|we)|will your)\b",
 
     r"\bwhat makes\b",
 
@@ -149,10 +170,8 @@ NON_NEWS_PATTERNS = (
     r"(?:site|website|homepage)\s+"
     r"(?:of|for)\b",
 
-    # Hindi and Hinglish article formats.
-    r"(?:क्या (?:है|हैं)|"
-    r"कैसे (?:काम|करें|देखें|होता|होती)|"
-    r"कौन है|क्यों कहा जाता है)",
+    # Hindi explanatory and question-led formats.
+    r"^\s*(?:क्या|क्यों|कैसे|कौन|कब|कहाँ)",
 
     r"(?:पूरी जानकारी|जानिए|गाइड|इतिहास|"
     r"मतलब|पूरी सूची|पूरी लिस्ट)",
@@ -168,9 +187,7 @@ NON_NEWS_PATTERNS = (
     r"यूट्यूब पर वापसी)",
 
     # German. Accents are folded before matching.
-    r"^\s*(?:was (?:ist|sind)|"
-    r"wie (?:funktioniert|kann|geht)|"
-    r"warum (?:nennt|heisst)|wer ist)\b",
+    r"^\s*(?:was|warum|wie|wer|wann|wo)\b",
 
     r"\b(?:ratgeber|leitfaden|"
     r"geschichte (?:von|des|der)|"
@@ -193,9 +210,7 @@ NON_NEWS_PATTERNS = (
 
     # French. Accents are folded before matching.
     r"^\s*(?:qu(?:'|’)est ce que|"
-    r"comment (?:fonctionne|faire|regarder)|"
-    r"pourquoi (?:appelle t on|s appelle)|"
-    r"qui est)\b",
+    r"quoi|pourquoi|comment|qui|quand|ou)\b",
 
     r"\b(?:guide (?:de|du|des|pour)|"
     r"histoire (?:de|du|des)|"
@@ -216,9 +231,8 @@ NON_NEWS_PATTERNS = (
     r"site officiel|page d accueil officielle)\b",
 
     # Spanish. Accents are folded before matching.
-    r"^\s*(?:que (?:es|son)|"
-    r"como (?:funciona|hacer|ver)|"
-    r"por que se llama|quien es)\b",
+    r"^\s*¿?\s*"
+    r"(?:que|por que|como|quien|cuando|donde)\b",
 
     r"\b(?:guia (?:de|para|sobre|completa)|"
     r"historia (?:de|del|de la)|"
