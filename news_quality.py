@@ -3495,6 +3495,7 @@ _DUPLICATE_GENERIC_TOKENS = {
 }
 
 
+
 _DUPLICATE_APPOINTMENT_ROLE_TOKENS = {
     "coach",
     "manager",
@@ -3505,6 +3506,24 @@ _DUPLICATE_APPOINTMENT_ROLE_TOKENS = {
     "minister",
     "secretary",
     "leader",
+}
+
+
+_DUPLICATE_TRANSACTION_ACTION_TOKENS = {
+    "bid",
+    "offer",
+    "transfer",
+    "sign",
+    "signing",
+    "join",
+    "loan",
+    "deal",
+    "appoint",
+    "hire",
+    "cancel",
+    "postpone",
+    "suspend",
+    "injury",
 }
 
 
@@ -3538,7 +3557,6 @@ def _semantic_duplicate_tokens(
 
     return output
 
-
 def _named_entities(
     value: object,
 ) -> set[str]:
@@ -3563,15 +3581,85 @@ def _named_entities(
     }
 
 
+def _entity_acronyms(
+    value: object,
+) -> tuple[
+    set[str],
+    set[str],
+]:
+    text = str(
+        value or ""
+    )
+
+    explicit = {
+        token.casefold()
+        for token in re.findall(
+            r"(?<!\w)[A-Z]{2,6}(?!\w)",
+            text,
+            flags=re.UNICODE,
+        )
+    }
+
+    expanded: set[str] = set()
+
+    for phrase in re.findall(
+        r"(?<!\w)"
+        r"[A-Z][\w'’]*"
+        r"(?:[\s-]+[A-Z][\w'’]*){1,5}"
+        r"(?!\w)",
+        text,
+        flags=re.UNICODE,
+    ):
+        words = re.findall(
+            r"[A-Z][\w'’]*",
+            phrase,
+            flags=re.UNICODE,
+        )
+
+        acronym = "".join(
+            word[0]
+            for word in words
+            if word
+        ).casefold()
+
+        if 2 <= len(acronym) <= 6:
+            expanded.add(
+                acronym
+            )
+
+    return (
+        explicit,
+        expanded,
+    )
+
+
+def _entity_aliases(
+    value: object,
+) -> set[str]:
+    explicit, expanded = (
+        _entity_acronyms(
+            value
+        )
+    )
+
+    return {
+        *_named_entities(
+            value
+        ),
+        *explicit,
+        *expanded,
+    }
+
+
 def _conflicting_entities(
     first: str,
     second: str,
 ) -> bool:
-    first_entities = _named_entities(
+    first_entities = _entity_aliases(
         first
     )
 
-    second_entities = _named_entities(
+    second_entities = _entity_aliases(
         second
     )
 
@@ -3598,11 +3686,18 @@ def _conflicting_entities(
         and len(second_only) <= 2
     )
 
-
 def near_duplicate(
     first: str,
     second: str,
 ) -> bool:
+    first_entities = _entity_aliases(
+        first
+    )
+
+    second_entities = _entity_aliases(
+        second
+    )
+
     first_tokens = set(
         _semantic_duplicate_tokens(
             first
@@ -3613,6 +3708,16 @@ def near_duplicate(
         _semantic_duplicate_tokens(
             second
         )
+    )
+
+    # Add dynamic entity aliases to the semantic token sets so
+    # an acronym and its expanded organisation name can match.
+    first_tokens.update(
+        first_entities
+    )
+
+    second_tokens.update(
+        second_entities
     )
 
     if (
@@ -3654,8 +3759,8 @@ def near_duplicate(
     )
 
     shared_entities = len(
-        _named_entities(first)
-        & _named_entities(second)
+        first_entities
+        & second_entities
     )
 
     appointment_duplicate = bool(
@@ -3669,7 +3774,51 @@ def near_duplicate(
         )
     )
 
-    if appointment_duplicate:
+    first_explicit, first_expanded = (
+        _entity_acronyms(
+            first
+        )
+    )
+
+    second_explicit, second_expanded = (
+        _entity_acronyms(
+            second
+        )
+    )
+
+    shared_acronym_link = bool(
+        (
+            first_explicit
+            & (
+                second_explicit
+                | second_expanded
+            )
+        )
+        or (
+            second_explicit
+            & first_expanded
+        )
+    )
+
+    transaction_duplicate = bool(
+        shared_tokens
+        & _DUPLICATE_TRANSACTION_ACTION_TOKENS
+    ) and bool(
+        (
+            shared >= 4
+            and shared_entities >= 2
+            and shared_acronym_link
+        )
+        or (
+            shared >= 5
+            and shared_entities >= 3
+        )
+    )
+
+    if (
+        appointment_duplicate
+        or transaction_duplicate
+    ):
         return True
 
     if _conflicting_entities(
@@ -3689,7 +3838,6 @@ def near_duplicate(
             and similarity >= 0.68
         )
     )
-
 
 
 def articles_near_duplicate(

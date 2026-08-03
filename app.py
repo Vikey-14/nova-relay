@@ -872,18 +872,16 @@ def _prepare_news_payload(
 
 NEWS_EVERYTHING_CATEGORY_QUERIES = {
     "sports": (
-        # Broad but sports-specific recall. Avoid ambiguous words
-        # such as title, record, season, game, team and club,
-        # which also retrieve entertainment, business and disaster
-        # articles. Generic competition terms keep this open to
-        # sports that are not named individually.
-        "(sport OR sports OR sporting OR athlete OR athletes OR "
-        "tournament OR championship OR league OR cup OR match OR race OR "
-        "medal OR medals OR podium OR transfer OR transfers OR signing OR "
-        "coach OR manager OR goalkeeper OR striker OR defender OR midfielder OR "
-        "bowler OR batter OR judoka OR boxer OR wrestler OR swimmer OR cyclist OR "
-        "gymnast OR skater OR football OR cricket OR rugby OR tennis OR baseball OR "
-        "basketball OR hockey OR golf OR athletics OR motorsport OR sumo)"
+        # Compact, broad sports recall. The quality layer decides
+        # whether each result is a genuine sporting development.
+        #
+        # Keep this expression compact because NewsAPI limits q to
+        # 500 characters and a country expression is appended.
+        "(sport OR sports OR athlete OR tournament OR championship OR "
+        "league OR cup OR match OR race OR medal OR transfer OR signing OR "
+        "coach OR football OR cricket OR rugby OR tennis OR baseball OR "
+        "basketball OR hockey OR golf OR athletics OR motorsport OR sumo OR "
+        "judo OR boxing)"
     ),
 
     "technology": (
@@ -928,14 +926,83 @@ NEWS_WORLD_EVENT_QUERY = (
 )
 
 
+# NewsAPI accepts at most 500 characters in q. Keep a small
+# safety margin so future aliases cannot cause country-specific
+# 400 responses.
+NEWSAPI_QUERY_SAFE_CHARS = 480
+
+
+def _trim_or_expression(
+    expression: str,
+    max_chars: int,
+) -> str:
+    clean = " ".join(
+        str(
+            expression or ""
+        ).split()
+    ).strip()
+
+    if (
+        not clean
+        or len(clean) <= max_chars
+    ):
+        return clean
+
+    if not (
+        clean.startswith("(")
+        and clean.endswith(")")
+        and " OR " in clean
+    ):
+        return clean
+
+    terms = [
+        term.strip()
+        for term in clean[1:-1].split(
+            " OR "
+        )
+        if term.strip()
+    ]
+
+    kept: list[str] = []
+
+    for term in terms:
+        candidate = (
+            "("
+            + " OR ".join(
+                [
+                    *kept,
+                    term,
+                ]
+            )
+            + ")"
+        )
+
+        if (
+            kept
+            and len(candidate) > max_chars
+        ):
+            break
+
+        kept.append(
+            term
+        )
+
+    return (
+        "("
+        + " OR ".join(
+            kept
+        )
+        + ")"
+        if kept
+        else clean
+    )
+
 def _build_news_everything_query(
     topic: str,
     country: str,
     country_name: str,
     category: str,
 ) -> str:
-    parts: list[str] = []
-
     clean_topic = canonical_topic(
         topic
     )
@@ -953,53 +1020,104 @@ def _build_news_everything_query(
         == "world"
     )
 
+    # A canonical topic already supplies the subject scope.
+    # Do not also append the broad category expression because
+    # that only enlarges the provider query without improving
+    # relevance.
     if clean_topic:
-        topic_expression = (
+        subject_expression = (
             topic_query_expression(
                 clean_topic
             )
         )
 
-        if topic_expression:
-            parts.append(
-                topic_expression
-            )
-
-    if clean_category:
-        parts.append(
+    elif clean_category:
+        subject_expression = (
             NEWS_EVERYTHING_CATEGORY_QUERIES.get(
                 clean_category,
                 clean_category,
             )
         )
 
-    if world_scope:
-        parts.append(
-            NEWS_WORLD_EVENT_QUERY
-        )
-
     else:
+        subject_expression = ""
+
+    if world_scope:
+        return (
+            subject_expression
+            or NEWS_WORLD_EVENT_QUERY
+        )
+
+    country_expression = (
+        country_query_expression(
+            country,
+            clean_country,
+            topic=clean_topic,
+            category=clean_category,
+        )
+    )
+
+    if (
+        subject_expression
+        and country_expression
+    ):
+        country_budget = max(
+            40,
+            NEWSAPI_QUERY_SAFE_CHARS
+            - len(subject_expression)
+            - len(" AND "),
+        )
+
         country_expression = (
-            country_query_expression(
-                country,
-                clean_country,
-                topic=clean_topic,
-                category=clean_category,
+            _trim_or_expression(
+                country_expression,
+                country_budget,
             )
         )
 
-        if country_expression:
-            parts.append(
-                country_expression
+        query = (
+            f"{subject_expression} "
+            f"AND {country_expression}"
+        )
+
+        if (
+            len(query)
+            > NEWSAPI_QUERY_SAFE_CHARS
+        ):
+            subject_budget = max(
+                40,
+                NEWSAPI_QUERY_SAFE_CHARS
+                - len(country_expression)
+                - len(" AND "),
             )
 
-    if not parts:
-        return NEWS_WORLD_EVENT_QUERY
+            subject_expression = (
+                _trim_or_expression(
+                    subject_expression,
+                    subject_budget,
+                )
+            )
 
-    return " AND ".join(
-        parts
-    ).strip()
+            query = (
+                f"{subject_expression} "
+                f"AND {country_expression}"
+            )
 
+        return query
+
+    if subject_expression:
+        return _trim_or_expression(
+            subject_expression,
+            NEWSAPI_QUERY_SAFE_CHARS,
+        )
+
+    if country_expression:
+        return _trim_or_expression(
+            country_expression,
+            NEWSAPI_QUERY_SAFE_CHARS,
+        )
+
+    return NEWS_WORLD_EVENT_QUERY
 
 
 @app.get("/news")
@@ -1198,7 +1316,8 @@ async def news(
         f"country={country!r} "
         f"country_name={country_name!r} "
         f"category={category!r} "
-        f"count={count!r}",
+        f"count={count!r} "
+        f"q_len={len(params.get('q', ''))!r}",
         flush=True,
     )
 
@@ -1214,9 +1333,24 @@ async def news(
         )
 
     if response.status_code != 200:
+        provider_body = (
+            response.text or ""
+        )[:500]
+
+        print(
+            "[NEWS_RELAY] PROVIDER_ERROR "
+            f"status={response.status_code!r} "
+            f"q_len={len(params.get('q', ''))!r} "
+            f"body={provider_body!r}",
+            flush=True,
+        )
+
         raise HTTPException(
-            response.status_code,
-            response.text,
+            502,
+            (
+                "news provider rejected the request: "
+                f"{response.status_code}"
+            ),
         )
 
     payload = response.json()
