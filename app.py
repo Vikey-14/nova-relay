@@ -872,17 +872,18 @@ def _prepare_news_payload(
 
 NEWS_EVERYTHING_CATEGORY_QUERIES = {
     "sports": (
-        # Broad all-sport recall. These are generic participant,
-        # competition and result terms, so an unlisted sport can
-        # still qualify without being added to a sport whitelist.
+        # Broad but sports-specific recall. Avoid ambiguous words
+        # such as title, record, season, game, team and club,
+        # which also retrieve entertainment, business and disaster
+        # articles. Generic competition terms keep this open to
+        # sports that are not named individually.
         "(sport OR sports OR sporting OR athlete OR athletes OR "
-        "player OR players OR team OR teams OR club OR clubs OR "
-        "competitor OR competitors OR tournament OR championship OR "
-        "league OR cup OR match OR game OR race OR medal OR medals OR "
-        "podium OR final OR season OR win OR wins OR won OR beat OR "
-        "beats OR score OR scores OR goal OR goals OR record OR title OR "
-        "champion OR transfer OR transfers OR signing OR coach OR manager OR "
-        "injury OR injured OR qualifies OR advances)"
+        "tournament OR championship OR league OR cup OR match OR race OR "
+        "medal OR medals OR podium OR transfer OR transfers OR signing OR "
+        "coach OR manager OR goalkeeper OR striker OR defender OR midfielder OR "
+        "bowler OR batter OR judoka OR boxer OR wrestler OR swimmer OR cyclist OR "
+        "gymnast OR skater OR football OR cricket OR rugby OR tennis OR baseball OR "
+        "basketball OR hockey OR golf OR athletics OR motorsport OR sumo)"
     ),
 
     "technology": (

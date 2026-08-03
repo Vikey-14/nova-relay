@@ -761,38 +761,33 @@ SPORTS_QUOTE_COMMENTARY_PATTERNS = (
 
 
 SPORTS_COMPETITIVE_SUBJECT_PATTERNS = (
-    # Generic competitive-sports vocabulary. This branch is
-    # intentionally sport-agnostic, so a sport does not need
-    # to appear in a hardcoded allow-list.
-    r"\b(?:sports?|sporting|athletes?|players?|teams?|clubs?|"
-    r"competitors?|coaches?|managers?|captains?|squads?|"
-    r"federations?|associations?|stadiums?|tournaments?|"
-    r"championships?|leagues?|cups?|matches?|games?|medals?|"
-    r"podiums?|finals?|semi[ -]?finals?|seasons?|fixtures?|"
-    r"friendly|friendlies|transfers?|signings?|loans?|"
-    r"internationals?|champions?|medalists?|rookies?|stars?|"
-    r"riders?|drivers?|fighters?|racers?|skaters?|golfers?|"
-    r"judokas?|boxers?|wrestlers?|swimmers?|cyclists?|"
-    r"runners?|gymnasts?|shooters?|bowlers?|batters?|batsmen|"
-    r"strikers?|defenders?|midfielders?|goalkeepers?)\b",
+    # Strong competitive-sport anchors. Avoid vague words such
+    # as "star", "team", "season", "record" and singular
+    # "heat", which also occur in entertainment and disaster
+    # reporting.
+    r"\b(?:athletes?|players?|coaches?|managers?|captains?|squads?|"
+    r"national teams?|sports federations?|tournaments?|championships?|"
+    r"leagues?|cups?|matches?|medals?|podiums?|semi[ -]?finals?|"
+    r"qualifiers?|friendlies|transfers?|signings?|loans?|"
+    r"goalkeepers?|strikers?|defenders?|midfielders?|bowlers?|batters?|"
+    r"judokas?|boxers?|wrestlers?|swimmers?|cyclists?|runners?|gymnasts?|"
+    r"shooters?|golfers?|skaters?|racers?|drivers?|riders?|climbers?)\b",
 
-    # Competition structures and scoring terms also provide
-    # sport evidence when the title names only an athlete
-    # or club.
-    r"\b(?:goals?|wickets?|runs?|home runs?|homers?|"
-    r"touchdowns?|tries|sets?|rounds?|bouts?|heats?|relays?|"
-    r"laps?|pole position|grid|drafts?|trades?|contracts?|"
-    r"grand prix|open)\b",
+    # Scoring and competition structures. "Heat" is accepted
+    # only in an unmistakably competitive form, so "heat stroke"
+    # cannot become athletics news.
+    r"\b(?:goals?|wickets?|home runs?|homers?|touchdowns?|tries|bouts?|"
+    r"(?:qualifying|semifinal|final)\s+heats?|heats\b|relays?|laps?|"
+    r"pole position|grand prix)\b",
 
-    # Common sport names improve recall, but they supplement
-    # the generic branches above and do not form a whitelist.
-    r"\b(?:football|soccer|cricket|tennis|badminton|"
-    r"basketball|hockey|baseball|rugby|golf|athletics|"
-    r"judo|boxing|wrestling|swimming|cycling|gymnastics|"
-    r"archery|shooting|weightlifting|rowing|fencing|squash|"
-    r"volleyball|handball|kabaddi|bowls|skating|skiing|sumo|"
-    r"table tennis|motorsport|formula 1|formula one|f1|"
-    r"motogp|horse racing|equestrian|jockey)\b",
+    # Common sport names improve recall, but generic competition
+    # anchors above mean this is not a whitelist.
+    r"\b(?:football|soccer|cricket|tennis|badminton|basketball|hockey|"
+    r"baseball|rugby|golf|athletics|judo|boxing|wrestling|swimming|"
+    r"cycling|gymnastics|archery|shooting|weightlifting|rowing|fencing|"
+    r"squash|volleyball|handball|kabaddi|bowls|skating|skiing|sumo|"
+    r"table tennis|motorsport|formula 1|formula one|f1|motogp|"
+    r"horse racing|equestrian|climbing)\b",
 
     # Hindi.
     r"(?:खेल|खिलाड़ी|टीम|क्लब|कोच|कप्तान|लीग|"
@@ -858,6 +853,45 @@ SPORTS_COMPETITIVE_DEVELOPMENT_PATTERNS = (
 )
 
 
+SPORTS_ENTERTAINMENT_RELEASE_PATTERNS = (
+    # Music, film and entertainment releases are never a
+    # competitive sporting development, even when an athlete
+    # or club is mentioned in the title.
+    r"\b(?:album|single|song|music video|soundtrack|concert|"
+    r"tour dates?|comeback dates?|repackaged album|box office|"
+    r"film|movie|episode)\b",
+
+    r"(?:एल्बम|सिंगल|गाना|गीत|म्यूजिक वीडियो|फिल्म|कॉन्सर्ट)",
+
+    r"\b(?:album|single|lied|musikvideo|konzert|film)\b",
+    r"\b(?:album|single|chanson|clip|concert|film)\b",
+    r"\b(?:album|sencillo|cancion|video musical|concierto|pelicula)\b",
+)
+
+
+SPORTS_EXTERNAL_INCIDENT_PATTERNS = (
+    # Disasters and medical incidents are not sport merely
+    # because they mention a sports centre or an athletic
+    # "heat". They may qualify only when the title directly
+    # reports an effect on a competition, match or athlete.
+    r"\b(?:earthquake|quake|aftershock|heat stroke|"
+    r"taking shelter|wildfire|flood|storm)\b",
+
+    r"(?:भूकंप|झटका|लू लगना|हीट स्ट्रोक|शरण|जंगल की आग|बाढ़|तूफान)",
+
+    r"\b(?:erdbeben|nachbeben|hitzschlag|waldbrand|uberschwemmung|sturm)\b",
+    r"\b(?:seisme|tremblement de terre|coup de chaleur|incendie|inondation|tempete)\b",
+    r"\b(?:terremoto|sismo|golpe de calor|incendio|inundacion|tormenta)\b",
+)
+
+
+SPORTS_EXTERNAL_IMPACT_PATTERNS = (
+    r"\b(?:cancel(?:s|led|ed|lation)?|postpon(?:e|es|ed|ement)|"
+    r"delay(?:s|ed)?|suspend(?:s|ed)?|relocat(?:e|es|ed)|"
+    r"move(?:s|d)?|reschedul(?:e|es|ed))\b",
+)
+
+
 SPORTS_COMMERCIAL_PRODUCT_PATTERNS = (
     # Consumer-product stories must not enter Sports merely
     # because the product is described as sporty.
@@ -889,31 +923,73 @@ def sports_development_relevant(
     article: dict,
 ) -> bool:
     # Use only the headline and description. Long article
-    # bodies often mention unrelated sports or countries.
-    title_and_description = " ".join(
-        (
-            str(
-                article.get("title")
-                or ""
-            ),
-
-            str(
-                article.get("description")
-                or ""
-            ),
-        )
+    # bodies often contain unrelated country or sport terms.
+    title = str(
+        article.get("title")
+        or ""
     )
+
+    description = str(
+        article.get("description")
+        or ""
+    )
+
+    title_has_subject = matches(
+        title,
+        SPORTS_COMPETITIVE_SUBJECT_PATTERNS,
+    )
+
+    description_has_subject = matches(
+        description,
+        SPORTS_COMPETITIVE_SUBJECT_PATTERNS,
+    )
+
+    title_has_development = matches(
+        title,
+        SPORTS_COMPETITIVE_DEVELOPMENT_PATTERNS,
+    )
+
+    description_has_development = matches(
+        description,
+        SPORTS_COMPETITIVE_DEVELOPMENT_PATTERNS,
+    )
+
+    # An album, single, song, film or concert is entertainment,
+    # not sport, regardless of whether a sporting personality
+    # happens to be mentioned.
+    if matches(
+        title,
+        SPORTS_ENTERTAINMENT_RELEASE_PATTERNS,
+    ):
+        return False
+
+    # A disaster or medical incident qualifies only when the
+    # title itself explicitly connects it to a sporting subject
+    # and reports a concrete effect such as cancellation or
+    # postponement.
+    if matches(
+        title,
+        SPORTS_EXTERNAL_INCIDENT_PATTERNS,
+    ):
+        return bool(
+            title_has_subject
+            and matches(
+                title,
+                SPORTS_EXTERNAL_IMPACT_PATTERNS,
+            )
+        )
 
     return bool(
-        matches(
-            title_and_description,
-            SPORTS_COMPETITIVE_SUBJECT_PATTERNS,
+        (
+            title_has_subject
+            or description_has_subject
         )
-        and matches(
-            title_and_description,
-            SPORTS_COMPETITIVE_DEVELOPMENT_PATTERNS,
+        and (
+            title_has_development
+            or description_has_development
         )
     )
+
 
 
 SPORTS_ROLLING_HUB_TITLE_PATTERNS = (
