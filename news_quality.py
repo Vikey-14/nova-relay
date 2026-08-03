@@ -667,6 +667,82 @@ SPORTS_REACTION_OR_PERSONALITY_PATTERNS = (
 )
 
 
+SPORTS_ROLLING_HUB_TITLE_PATTERNS = (
+    # Rolling event centres, medal tables and bundled utility
+    # pages are not individual current sporting developments.
+    #
+    # Keep this title-only so a genuine report is not rejected
+    # merely because its description briefly mentions the
+    # tournament's wider medal table or schedule.
+
+    # English.
+    r"\b(?:medal\s+(?:table|tally|standings)|"
+    r"overall standings)\b",
+
+    r"\b(?:live|rolling)\s+"
+    r"(?:blog|coverage|tracker|updates?)\b",
+
+    r"\b(?:final|opening|closing)\s+day\s+live\b",
+    r"\bday\s+\d+\s+live\b",
+
+    r"\blive\s*[:|–—-]\s*"
+    r"(?:results?|scores?|"
+    r"medal\s+(?:table|tally)|"
+    r"schedule|fixtures?|highlights?)\b",
+
+    # Titles bundling three or more reference utilities:
+    #
+    # Results, Medal Table, Schedule & Highlights
+    # Scores, Fixtures and Standings
+    r"\b(?:results?|scores?|"
+    r"medal\s+(?:table|tally)|"
+    r"schedule|fixtures?|highlights?)\b"
+    r".{0,80}\b"
+    r"(?:results?|scores?|"
+    r"medal\s+(?:table|tally)|"
+    r"schedule|fixtures?|highlights?)\b"
+    r".{0,80}\b"
+    r"(?:results?|scores?|"
+    r"medal\s+(?:table|tally)|"
+    r"schedule|fixtures?|highlights?)\b",
+
+    # Rolling pages that mix one completed result with the
+    # next fixture rather than reporting one development.
+    r"\b(?:up next|next up|coming up)\b",
+
+    # Hindi and Hinglish.
+    r"(?:पदक तालिका|पदक सूची|"
+    r"मेडल टेबल|मेडल टैली)",
+
+    r"(?:लाइव|सीधा).{0,80}"
+    r"(?:परिणाम|नतीजे|पदक तालिका|"
+    r"मेडल टेबल|शेड्यूल|कार्यक्रम|"
+    r"हाइलाइट्स)",
+
+    # German. Text is accent-folded before matching.
+    r"\b(?:medaillenspiegel|"
+    r"medaillentabelle|medaillenstand)\b",
+
+    r"\b(?:live|liveticker|live ticker)\b"
+    r".{0,80}\b"
+    r"(?:ergebnisse?|spielplan|highlights?)\b",
+
+    # French. Text is accent-folded before matching.
+    r"\b(?:tableau|classement)\s+"
+    r"des\s+medailles\b",
+
+    r"\ben direct\b.{0,80}\b"
+    r"(?:resultats?|programme|calendrier|"
+    r"temps forts)\b",
+
+    # Spanish. Text is accent-folded before matching.
+    r"\b(?:medallero|tabla de medallas)\b",
+
+    r"\ben (?:vivo|directo)\b.{0,80}\b"
+    r"(?:resultados?|calendario|horarios?|"
+    r"destacados?)\b",
+)
+
 SPORTS_UTILITY_PATTERNS = (
     # English: match-reference and statistics pages.
     r"\b(?:pitch|venue|ground|court|track|course)\s+report\b",
@@ -882,9 +958,16 @@ SPORTS_UTILITY_URL_MARKERS = (
     "/stats/",
     "/points-table/",
     "/standings/",
+    "/medal-table/",
+    "/medal-tally/",
     "/scorecard/",
     "/live-score/",
     "/live-updates/",
+    "/live-blog/",
+    "/live-coverage/",
+    "/results-centre/",
+    "/results-center/",
+    "/highlights/",
     "/predicted-lineup/",
     "/probable-lineup/",
     "/playing-xi/",
@@ -3359,6 +3442,10 @@ def rejection_reason(
         matches(
             combined_text,
             SPORTS_UTILITY_PATTERNS,
+        )
+        or matches(
+            title,
+            SPORTS_ROLLING_HUB_TITLE_PATTERNS,
         )
         or sports_utility_url(
             article.get("url")
