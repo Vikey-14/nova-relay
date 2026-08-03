@@ -255,6 +255,46 @@ NON_NEWS_PATTERNS = (
     r"sitio oficial|pagina oficial)\b",
 )
 
+EXPLANATORY_NEWS_FORMAT_PATTERNS = (
+    # These formats are rejected even when the title also
+    # contains a genuine cancellation, delay or announcement.
+
+    # English.
+    r"^\s*(?:what|why|how|who|where|when)\b",
+
+    r"\?\s+(?:what|why|how|who|where|when)\b",
+
+    r"(?:^|[|:–—-]\s*)"
+    r"(?:here(?:'|’)s why|here is why|"
+    r"why it matters|what it means)\b",
+
+    # Hindi and Hinglish.
+    r"^\s*(?:क्या|क्यों|कैसे|कौन|कब|कहाँ)",
+
+    r"(?:^|[|:–—-]\s*)"
+    r"(?:जानिए क्यों|यह है वजह|इसलिए हुआ)",
+
+    # German. Text is accent-folded before matching.
+    r"^\s*(?:was|warum|wie|wer|wann|wo)\b",
+
+    r"(?:^|[|:–—-]\s*)"
+    r"(?:darum|deshalb|das ist der grund)\b",
+
+    # French.
+    r"^\s*(?:qu(?:'|’)est ce que|quoi|"
+    r"pourquoi|comment|qui|quand|ou)\b",
+
+    r"(?:^|[|:–—-]\s*)"
+    r"(?:voici pourquoi|ce que cela signifie)\b",
+
+    # Spanish.
+    r"^\s*¿?\s*"
+    r"(?:que|por que|como|quien|cuando|donde)\b",
+
+    r"(?:^|[|:–—-]\s*)"
+    r"(?:esta es la razon|por esto|que significa)\b",
+)
+
 
 NON_NEWS_URL_MARKERS = (
     "/opinion/",
@@ -665,6 +705,193 @@ SPORTS_REACTION_OR_PERSONALITY_PATTERNS = (
     r"\b(?:aficionados?|hinchas?)\b.{0,100}\b"
     r"(?:comparan|reaccionan|se burlan|creen)\b",
 )
+
+
+SPORTS_PERSONALITY_ATTENDANCE_PATTERNS = (
+    # Celebrity, investor, owner and royal attendance stories
+    # are not sporting developments.
+    r"\b(?:celebrity|actor|singer|influencer|investor|"
+    r"owner|co[ -]?owner|royal|king|queen|prince|princess|"
+    r"family)\b"
+    r".{0,140}\b"
+    r"(?:attends?|attended|watches?|watched|visits?|visited|"
+    r"cheers?|cheered|supports?|supported|in action)\b",
+
+    # Hindi.
+    r"(?:सेलिब्रिटी|निवेशक|मालिक|राजपरिवार|राजकुमार|"
+    r"राजकुमारी|परिवार).{0,120}"
+    r"(?:पहुंचे|पहुंची|देखा|देखी|शामिल|समर्थन)",
+
+    # German, French and Spanish.
+    r"\b(?:promi|investor|eigentumer|konig|konigin|"
+    r"prinz|prinzessin|familie)\b.{0,120}\b"
+    r"(?:besucht|sieht|schaut|unterstutzt)\b",
+
+    r"\b(?:celebrite|investisseur|proprietaire|roi|reine|"
+    r"prince|princesse|famille)\b.{0,120}\b"
+    r"(?:assiste|regarde|visite|soutient)\b",
+
+    r"\b(?:celebridad|inversor|propietario|rey|reina|"
+    r"principe|princesa|familia)\b.{0,120}\b"
+    r"(?:asiste|mira|visita|apoya)\b",
+)
+
+
+SPORTS_ANALYSIS_FEATURE_PATTERNS = (
+    # Evaluative and retrospective sports features.
+    r"\b(?:proves?|shows?|demonstrates?)\b"
+    r".{0,120}\b"
+    r"(?:the real deal|why|what it takes|a point)\b",
+
+    r"\b(?:verdict|takeaways?|lessons?|"
+    r"what we learned|winners? and losers?)\b",
+)
+
+
+SPORTS_COMPETITIVE_SUBJECT_PATTERNS = (
+    # Generic competitive-sports vocabulary. This is not a
+    # sport whitelist: any sport can qualify through these
+    # roles, competitions and event structures.
+    r"\b(?:sports?|sporting|athletes?|players?|teams?|clubs?|"
+    r"coaches?|managers?|captains?|squads?|federations?|"
+    r"associations?|stadiums?|tournaments?|championships?|"
+    r"leagues?|cups?|matches?|games?|medals?|podiums?|"
+    r"finals?|semi[ -]?finals?|seasons?|fixtures?|"
+    r"friendly|friendlies|transfers?|signings?|loans?|"
+    r"bowlers?|batters?|batsmen|strikers?|defenders?|"
+    r"midfielders?|goalkeepers?|judokas?|boxers?|wrestlers?|"
+    r"swimmers?|cyclists?|runners?|gymnasts?|shooters?)\b",
+
+    # Common sport names supplement the generic structures;
+    # they do not limit which sports are accepted.
+    r"\b(?:football|soccer|cricket|tennis|badminton|"
+    r"basketball|hockey|baseball|rugby|golf|athletics|"
+    r"judo|boxing|wrestling|swimming|cycling|gymnastics|"
+    r"archery|shooting|weightlifting|rowing|fencing|squash|"
+    r"volleyball|handball|kabaddi|bowls|skating|skiing|"
+    r"formula 1|formula one|f1|motogp|horse racing|"
+    r"equestrian|jockey)\b",
+
+    # Hindi.
+    r"(?:खेल|खिलाड़ी|टीम|क्लब|कोच|कप्तान|लीग|"
+    r"टूर्नामेंट|चैंपियनशिप|कप|मैच|रेस|पदक|"
+    r"फाइनल|सेमीफाइनल|ट्रांसफर|गोलकीपर|"
+    r"गेंदबाज|बल्लेबाज|मुक्केबाजी|कुश्ती)",
+
+    # German.
+    r"\b(?:sport|spieler|mannschaft|verein|trainer|liga|"
+    r"turnier|meisterschaft|pokal|spiel|rennen|medaille|"
+    r"finale|transfer|torhuter)\b",
+
+    # French.
+    r"\b(?:sport|joueur|equipe|club|entraineur|ligue|"
+    r"tournoi|championnat|coupe|match|course|medaille|"
+    r"finale|transfert|gardien)\b",
+
+    # Spanish.
+    r"\b(?:deporte|jugador|equipo|club|entrenador|liga|"
+    r"torneo|campeonato|copa|partido|carrera|medalla|"
+    r"final|fichaje|portero)\b",
+)
+
+
+SPORTS_COMPETITIVE_DEVELOPMENT_PATTERNS = (
+    # Direct results, personnel decisions, transfers and
+    # other time-bound sporting developments.
+    r"\b(?:wins?|won|victory|loses?|lost|loss|"
+    r"beat(?:s|en)?|defeat(?:s|ed)?|draws?|scores?|"
+    r"qualif(?:y|ies|ied)|advances?|eliminat(?:e|es|ed)|"
+    r"gold|silver|bronze|medals?|podium|record|title|"
+    r"champion|clean sweep|signs?|signed|signing|"
+    r"bids?|interest|approach|target|joins?|joined|loan|"
+    r"appoint(?:s|ed)?|named|launch(?:es|ed)?|"
+    r"begins?|starts?|cancel(?:s|led|ed)?|"
+    r"postpon(?:e|es|ed)|injur(?:y|ies|ed)|"
+    r"suspend(?:s|ed)?|ban(?:s|ned)?|retir(?:e|es|ed)|"
+    r"returns?|set for|secures?|breaks?|dies?|death)\b",
+
+    # Hindi.
+    r"(?:जीता|जीती|जीते|हारा|हारी|हराया|स्कोर|"
+    r"क्वालीफाई|पदक|स्वर्ण|रजत|कांस्य|रिकॉर्ड|"
+    r"चैंपियन|हस्ताक्षर|शामिल|नियुक्त|नामित|"
+    r"शुरू|लॉन्च|रद्द|स्थगित|घायल|प्रतिबंध|"
+    r"संन्यास|वापसी)",
+
+    # German.
+    r"\b(?:gewinnt|gewann|verliert|verlor|schlagt|"
+    r"qualifiziert|medaille|gold|silber|bronze|rekord|"
+    r"meister|verpflichtet|wechselt|ernennt|startet|"
+    r"abgesagt|verschoben|verletzt|gesperrt|kehrt zuruck)\b",
+
+    # French.
+    r"\b(?:gagne|remporte|perd|bat|qualifie|"
+    r"medaille d or|medaille d argent|medaille de bronze|"
+    r"record|champion|signe|rejoint|nomme|debute|"
+    r"annule|reporte|blesse|suspendu|revient)\b",
+
+    # Spanish.
+    r"\b(?:gana|vence|pierde|clasifica|medalla|oro|plata|"
+    r"bronce|record|campeon|ficha|firma|se une|nombra|"
+    r"comienza|cancela|aplaza|lesionado|suspendido|regresa)\b",
+)
+
+
+SPORTS_COMMERCIAL_PRODUCT_PATTERNS = (
+    # Consumer-product stories must not enter Sports merely
+    # because the product is described as sporty.
+    r"\b(?:unveils?|launches?|introduces?|debut(?:s|ed)?)\b"
+    r".{0,140}\b"
+    r"(?:watch(?:es)?|smartwatch(?:es)?|shoe(?:s)?|sneakers?|"
+    r"jerseys?|kits?|apparel|clothing|collection|gadget|device|"
+    r"equipment|accessor(?:y|ies)|product|app|platform)\b",
+
+    r"\b(?:watch(?:es)?|smartwatch(?:es)?|shoe(?:s)?|sneakers?|"
+    r"jerseys?|kits?|apparel|clothing|gadget|device|product)\b"
+    r".{0,140}\b"
+    r"(?:bluetooth|battery|solar|straps?|specifications?|specs?|"
+    r"features?|price|availability|available|sale)\b",
+
+    # Hindi.
+    r"(?:लॉन्च|पेश|अनावरण).{0,120}"
+    r"(?:घड़ी|स्मार्टवॉच|जूते|जर्सी|किट|कपड़े|उत्पाद)",
+
+    # German, French and Spanish.
+    r"\b(?:stellt vor|bringt auf den markt|lance|devoile|"
+    r"lanza|presenta)\b.{0,120}\b"
+    r"(?:uhr|smartwatch|schuhe|trikot|montre|chaussures|"
+    r"maillot|reloj|zapatillas|camiseta|producto)\b",
+)
+
+
+def sports_development_relevant(
+    article: dict,
+) -> bool:
+    # Use only the headline and description. Long article
+    # bodies often mention unrelated sports or countries.
+    title_and_description = " ".join(
+        (
+            str(
+                article.get("title")
+                or ""
+            ),
+
+            str(
+                article.get("description")
+                or ""
+            ),
+        )
+    )
+
+    return bool(
+        matches(
+            title_and_description,
+            SPORTS_COMPETITIVE_SUBJECT_PATTERNS,
+        )
+        and matches(
+            title_and_description,
+            SPORTS_COMPETITIVE_DEVELOPMENT_PATTERNS,
+        )
+    )
 
 
 SPORTS_ROLLING_HUB_TITLE_PATTERNS = (
@@ -2131,12 +2358,10 @@ def country_relevant(
         if fold(alias)
     }
 
-    aliases = (
+    if not (
         base_aliases
-        | sports_aliases
-    )
-
-    if not aliases:
+        or sports_aliases
+    ):
         return True
 
     title = fold(
@@ -2152,7 +2377,7 @@ def country_relevant(
     content = fold(
         article.get("content")
         or ""
-    )[:1600]
+    )[:1200]
 
     exact_gb_key = (
         _exact_gb_country_key(
@@ -2206,23 +2431,43 @@ def country_relevant(
             if value
         )
 
-    title_hits = mention_count(
+    base_title_hits = mention_count(
         title,
-        aliases,
+        base_aliases,
     )
 
-    description_hits = mention_count(
+    sports_title_hits = mention_count(
+        title,
+        sports_aliases,
+    )
+
+    base_description_hits = mention_count(
         description,
-        aliases,
+        base_aliases,
     )
 
-    content_hits = mention_count(
+    sports_description_hits = mention_count(
+        description,
+        sports_aliases,
+    )
+
+    base_content_hits = mention_count(
         content,
-        aliases,
+        base_aliases,
+    )
+
+    sports_content_hits = mention_count(
+        content,
+        sports_aliases,
+    )
+
+    requested_title_hits = (
+        base_title_hits
+        + sports_title_hits
     )
 
     if exact_gb_key:
-        other_aliases = {
+        other_base_aliases = {
             fold(alias)
             for key, values in (
                 GB_HOME_NATION_ALIASES.items()
@@ -2231,76 +2476,79 @@ def country_relevant(
             for alias in values
         }
 
-        if sports_request:
-            other_aliases.update(
+        other_sports_aliases = (
+            {
                 fold(alias)
                 for key, values in (
                     GB_HOME_NATION_SPORTS_RELEVANCE_ALIASES.items()
                 )
                 if key != exact_gb_key
                 for alias in values
+            }
+            if sports_request
+            else set()
+        )
+
+        other_title_hits = (
+            mention_count(
+                title,
+                other_base_aliases,
             )
-
-        other_title_hits = mention_count(
-            title,
-            other_aliases,
+            + mention_count(
+                title,
+                other_sports_aliases,
+            )
         )
 
-        other_description_hits = mention_count(
-            description,
-            other_aliases,
+        other_description_hits = (
+            mention_count(
+                description,
+                other_base_aliases,
+            )
+            + mention_count(
+                description,
+                other_sports_aliases,
+            )
         )
 
-        other_content_hits = mention_count(
-            content,
-            other_aliases,
-        )
-
-        # Never widen a headline that is explicitly about
-        # another UK home nation.
-        if other_title_hits:
+        if (
+            other_title_hits
+            and not requested_title_hits
+        ):
             return False
 
-        if title_hits:
+        if requested_title_hits:
             return True
 
-        # Transfer and domestic-club reports often identify
-        # England through the league only in the description.
-        if (
-            description_hits
-            and not other_description_hits
-        ):
+        # A domestic competition or governing-body phrase,
+        # such as Premier League or Scottish Rugby, is strong
+        # country evidence in the description.
+        if sports_description_hits:
             return True
 
-        # NewsAPI's Everything search also searches article
-        # content. Accept that evidence for sports only when
-        # the requested home nation has stronger support than
-        # a competing one.
-        if (
-            sports_request
-            and content_hits
-            and content_hits
-            > other_content_hits
-            and not other_description_hits
-        ):
-            return True
+        if other_description_hits:
+            return False
 
-        return False
+        # One passing location mention such as
+        # "in Glasgow, Scotland" is insufficient.
+        #
+        # This blocks Australian and Canadian Commonwealth
+        # Games stories from becoming Scotland headlines.
+        return base_description_hits >= 2
 
-    if (
-        title_hits
-        or description_hits
-    ):
-        return True
-
-    # For sports, allow a body-level country signal so a
-    # domestic-club headline is not rejected merely because
-    # the title names only the club, player or competition.
+    # Normal countries require direct title/description
+    # evidence. Body-only evidence needs two mentions because
+    # article bodies routinely mention unrelated countries.
     return bool(
-        sports_request
-        and content_hits
+        base_title_hits
+        or base_description_hits
+        or sports_title_hits
+        or sports_description_hits
+        or (
+            base_content_hits
+            + sports_content_hits
+        ) >= 2
     )
-
 
 
 STOPWORDS = {
@@ -3408,11 +3656,20 @@ def rejection_reason(
     ):
         return "press_release_source"
 
+
     if matches(
         combined_text,
         PROMOTIONAL_CONTENT_PATTERNS,
     ):
         return "promotional_content"
+
+    # This check is unconditional. A cancellation or delay
+    # does not rescue a "here's why" explainer article.
+    if matches(
+        title,
+        EXPLANATORY_NEWS_FORMAT_PATTERNS,
+    ):
+        return "explanatory_or_analysis_title"
 
     if (
         sports_scope(
@@ -3431,12 +3688,34 @@ def rejection_reason(
             topic,
             category,
         )
-        and matches(
-            title,
-            SPORTS_REACTION_OR_PERSONALITY_PATTERNS,
+        and (
+            matches(
+                title,
+                SPORTS_REACTION_OR_PERSONALITY_PATTERNS,
+            )
+            or matches(
+                title,
+                SPORTS_PERSONALITY_ATTENDANCE_PATTERNS,
+            )
+            or matches(
+                title,
+                SPORTS_ANALYSIS_FEATURE_PATTERNS,
+            )
         )
     ):
         return "sports_reaction_or_personality"
+
+    if (
+        sports_scope(
+            topic,
+            category,
+        )
+        and matches(
+            title,
+            SPORTS_COMMERCIAL_PRODUCT_PATTERNS,
+        )
+    ):
+        return "sports_product_or_commercial"
 
     is_sports_utility = bool(
         matches(
@@ -3507,6 +3786,17 @@ def rejection_reason(
         and not is_real_reference_change
     ):
         return "non_news_title"
+
+    if (
+        sports_scope(
+            topic,
+            category,
+        )
+        and not sports_development_relevant(
+            article
+        )
+    ):
+        return "not_sporting_development"
 
     if (
         str(
