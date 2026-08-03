@@ -872,10 +872,10 @@ def _prepare_news_payload(
 
 NEWS_EVERYTHING_CATEGORY_QUERIES = {
     "sports": (
-        "(football OR soccer OR cricket OR tennis OR "
-        "badminton OR basketball OR hockey OR baseball OR "
-        "rugby OR golf OR athletics OR Olympics OR "
-        "\"Formula 1\" OR F1 OR MotoGP)"
+        "(sport OR sports OR sporting OR athlete OR athletes OR "
+        "tournament OR championship OR league OR cup OR match OR "
+        "race OR medal OR medals OR transfer OR transfers OR "
+        "signing OR coach OR manager)"
     ),
 
     "technology": (
@@ -975,6 +975,8 @@ def _build_news_everything_query(
             country_query_expression(
                 country,
                 clean_country,
+                topic=clean_topic,
+                category=clean_category,
             )
         )
 
@@ -1076,6 +1078,11 @@ async def news(
         != "world"
     )
 
+    country_sports_scope = bool(
+        country_scope
+        and category == "sports"
+    )
+
     use_everything = bool(
         mode == "everything"
 
@@ -1121,12 +1128,16 @@ async def news(
 
             # Fetch enough candidates before strict quality,
             # country and duplicate filtering.
-            "pageSize": min(
-                max(
-                    count * 8,
-                    40,
-                ),
-                100,
+            "pageSize": (
+                100
+                if country_sports_scope
+                else min(
+                    max(
+                        count * 8,
+                        40,
+                    ),
+                    100,
+                )
             ),
 
             "sortBy": "publishedAt",
@@ -1225,11 +1236,19 @@ async def news(
         endpoint_name
     )
 
+    quality = (
+        payload.get("nova_quality")
+        or {}
+    )
+
     print(
         "[NEWS_RELAY] RESULT "
         f"endpoint={endpoint_name!r} "
         f"returned="
         f"{len(payload.get('articles') or [])!r} "
+        f"accepted={quality.get('accepted')!r} "
+        f"rejected={quality.get('rejected')!r} "
+        f"reasons={quality.get('reasons')!r} "
         f"fresh_days={NEWS_FRESH_DAYS!r}",
         flush=True,
     )

@@ -1635,6 +1635,146 @@ GB_HOME_NATION_ALIASES = {
 }
 
 
+GB_HOME_NATION_SPORTS_QUERY_ALIASES = {
+    # Compact geographical and domestic-sport clues used
+    # inside NewsAPI's q expression.
+    #
+    # This is NOT a whitelist of allowed sports. Reports
+    # about any sport can still qualify through the country
+    # name or demonym: England/English, Scotland/Scottish,
+    # Wales/Welsh or Northern Ireland/Northern Irish.
+    "england": (
+        "Team England",
+        "Premier League",
+        "EFL",
+        "FA Cup",
+        "County Championship",
+        "Premiership Rugby",
+    ),
+
+    "scotland": (
+        "Team Scotland",
+        "Scottish Premiership",
+        "SPFL",
+        "Scottish Cup",
+        "Scottish Rugby",
+        "Cricket Scotland",
+    ),
+
+    "wales": (
+        "Team Wales",
+        "Cymru Premier",
+        "Welsh Cup",
+        "Sport Wales",
+        "Welsh Rugby",
+        "Hockey Wales",
+    ),
+
+    "northern ireland": (
+        "Team Northern Ireland",
+        "Team NI",
+        "NIFL Premiership",
+        "Sport Northern Ireland",
+        "Athletics Northern Ireland",
+        "Northern Cricket Union",
+    ),
+}
+
+
+GB_HOME_NATION_SPORTS_RELEVANCE_ALIASES = {
+    # Broader aliases used only after articles have been
+    # downloaded. They improve recognition across many
+    # domestic sports without making the provider query huge.
+    "england": (
+        *GB_HOME_NATION_SPORTS_QUERY_ALIASES["england"],
+        "England team",
+        "England squad",
+        "England national team",
+        "England international",
+        "English sport",
+        "English sports",
+        "Sport England",
+        "Women's Super League",
+        "England Rugby",
+        "England Athletics",
+        "England Hockey",
+        "England Netball",
+        "Swim England",
+        "England Boxing",
+        "Badminton England",
+        "Basketball England",
+        "England Squash",
+        "Table Tennis England",
+        "England Golf",
+        "English Gymnastics",
+    ),
+
+    "scotland": (
+        *GB_HOME_NATION_SPORTS_QUERY_ALIASES["scotland"],
+        "Scotland team",
+        "Scotland squad",
+        "Scotland national team",
+        "Scotland international",
+        "Scottish sport",
+        "Scottish sports",
+        "sportscotland",
+        "SWPL",
+        "Scottish Athletics",
+        "Scottish Hockey",
+        "Scottish Swimming",
+        "Boxing Scotland",
+        "Badminton Scotland",
+        "Basketball Scotland",
+        "Scottish Squash",
+        "Table Tennis Scotland",
+        "Scottish Golf",
+        "Scottish Gymnastics",
+        "Scottish Cycling",
+    ),
+
+    "wales": (
+        *GB_HOME_NATION_SPORTS_QUERY_ALIASES["wales"],
+        "Wales team",
+        "Wales squad",
+        "Wales national team",
+        "Wales international",
+        "Welsh sport",
+        "Welsh sports",
+        "Wales Netball",
+        "Welsh Athletics",
+        "Swim Wales",
+        "Welsh Boxing",
+        "Badminton Wales",
+        "Basketball Wales",
+        "Squash Wales",
+        "Table Tennis Wales",
+        "Wales Golf",
+        "Welsh Gymnastics",
+        "Welsh Cycling",
+        "Cricket Wales",
+    ),
+
+    "northern ireland": (
+        *GB_HOME_NATION_SPORTS_QUERY_ALIASES[
+            "northern ireland"
+        ],
+        "Northern Ireland team",
+        "Northern Ireland squad",
+        "Northern Ireland national team",
+        "Northern Ireland international",
+        "Northern Irish sport",
+        "Northern Irish sports",
+        "Irish Premiership",
+        "Ulster Rugby",
+        "Swim Ulster",
+        "Ulster Hockey",
+        "Ulster Boxing",
+        "Golf Ireland",
+    ),
+}
+
+
+
 def _exact_gb_country_key(
     country_name: str,
 ) -> str:
@@ -1688,6 +1828,41 @@ def _exact_gb_country_key(
             return key
 
     return ""
+
+
+
+def _country_sports_alias_values(
+    country_code: str,
+    country_name: str,
+    *,
+    for_query: bool = False,
+) -> tuple[str, ...]:
+    code = str(
+        country_code or ""
+    ).strip().casefold()
+
+    if code != "gb":
+        return ()
+
+    exact_gb_key = _exact_gb_country_key(
+        country_name
+    )
+
+    if not exact_gb_key:
+        return ()
+
+    source = (
+        GB_HOME_NATION_SPORTS_QUERY_ALIASES
+        if for_query
+        else GB_HOME_NATION_SPORTS_RELEVANCE_ALIASES
+    )
+
+    return tuple(
+        source.get(
+            exact_gb_key,
+            (),
+        )
+    )
 
 
 def _country_alias_values(
@@ -1773,42 +1948,110 @@ def _country_alias_values(
 def country_query_expression(
     country_code: str,
     country_name: str,
+    *,
+    topic: str = "",
+    category: str = "",
 ) -> str:
-    aliases = (
+    values = list(
         _country_alias_values(
             country_code,
             country_name,
         )
     )
 
-    if not aliases:
+    if sports_scope(
+        topic,
+        category,
+    ):
+        values.extend(
+            _country_sports_alias_values(
+                country_code,
+                country_name,
+                for_query=True,
+            )
+        )
+
+    output: list[str] = []
+    seen: set[str] = set()
+
+    for value in values:
+        clean = " ".join(
+            str(
+                value or ""
+            ).split()
+        ).strip()
+
+        key = fold(
+            clean
+        )
+
+        if (
+            not clean
+            or not key
+            or key in seen
+        ):
+            continue
+
+        seen.add(
+            key
+        )
+
+        output.append(
+            clean
+        )
+
+    if not output:
         return ""
 
     return (
         "("
         + " OR ".join(
             f'"{alias}"'
-            for alias in aliases
+            for alias in output
         )
         + ")"
     )
-
 
 
 def country_relevant(
     article: dict,
     country_code: str,
     country_name: str,
+    *,
+    topic: str = "",
+    category: str = "",
 ) -> bool:
-    aliases = {
+    sports_request = sports_scope(
+        topic,
+        category,
+    )
+
+    base_aliases = {
+        fold(alias)
+        for alias in _country_alias_values(
+            country_code,
+            country_name,
+        )
+        if fold(alias)
+    }
+
+    sports_aliases = {
         fold(alias)
         for alias in (
-            _country_alias_values(
+            _country_sports_alias_values(
                 country_code,
                 country_name,
             )
+            if sports_request
+            else ()
         )
+        if fold(alias)
     }
+
+    aliases = (
+        base_aliases
+        | sports_aliases
+    )
 
     if not aliases:
         return True
@@ -1821,7 +2064,12 @@ def country_relevant(
     description = fold(
         article.get("description")
         or ""
-    )[:800]
+    )[:1000]
+
+    content = fold(
+        article.get("content")
+        or ""
+    )[:1600]
 
     exact_gb_key = (
         _exact_gb_country_key(
@@ -1835,18 +2083,26 @@ def country_relevant(
 
     # New England is a US region/team name, not England.
     if exact_gb_key == "england":
-        title = re.sub(
-            r"(?<!\w)new\s+england(?!\w)",
-            " ",
-            title,
-            flags=re.I | re.UNICODE,
+        def remove_new_england(
+            value: str,
+        ) -> str:
+            return re.sub(
+                r"(?<!\w)new\s+england(?!\w)",
+                " ",
+                value,
+                flags=re.I | re.UNICODE,
+            )
+
+        title = remove_new_england(
+            title
         )
 
-        description = re.sub(
-            r"(?<!\w)new\s+england(?!\w)",
-            " ",
-            description,
-            flags=re.I | re.UNICODE,
+        description = remove_new_england(
+            description
+        )
+
+        content = remove_new_england(
+            content
         )
 
     def mention_count(
@@ -1877,8 +2133,13 @@ def country_relevant(
         aliases,
     )
 
+    content_hits = mention_count(
+        content,
+        aliases,
+    )
+
     if exact_gb_key:
-        other_home_aliases = {
+        other_aliases = {
             fold(alias)
             for key, values in (
                 GB_HOME_NATION_ALIASES.items()
@@ -1887,35 +2148,76 @@ def country_relevant(
             for alias in values
         }
 
+        if sports_request:
+            other_aliases.update(
+                fold(alias)
+                for key, values in (
+                    GB_HOME_NATION_SPORTS_RELEVANCE_ALIASES.items()
+                )
+                if key != exact_gb_key
+                for alias in values
+            )
+
         other_title_hits = mention_count(
             title,
-            other_home_aliases,
+            other_aliases,
         )
 
         other_description_hits = mention_count(
             description,
-            other_home_aliases,
+            other_aliases,
         )
 
-        # Exact home-nation requests are deliberately
-        # conservative. One incidental phrase such as
-        # "English League One" must not turn a Scottish
-        # or Welsh story into England news.
+        other_content_hits = mention_count(
+            content,
+            other_aliases,
+        )
+
+        # Never widen a headline that is explicitly about
+        # another UK home nation.
         if other_title_hits:
             return False
 
         if title_hits:
             return True
 
-        return bool(
-            description_hits >= 2
-            and other_description_hits == 0
-        )
+        # Transfer and domestic-club reports often identify
+        # England through the league only in the description.
+        if (
+            description_hits
+            and not other_description_hits
+        ):
+            return True
 
-    return bool(
+        # NewsAPI's Everything search also searches article
+        # content. Accept that evidence for sports only when
+        # the requested home nation has stronger support than
+        # a competing one.
+        if (
+            sports_request
+            and content_hits
+            and content_hits
+            > other_content_hits
+            and not other_description_hits
+        ):
+            return True
+
+        return False
+
+    if (
         title_hits
         or description_hits
+    ):
+        return True
+
+    # For sports, allow a body-level country signal so a
+    # domestic-club headline is not rejected merely because
+    # the title names only the club, player or competition.
+    return bool(
+        sports_request
+        and content_hits
     )
+
 
 
 STOPWORDS = {
@@ -3131,6 +3433,8 @@ def rejection_reason(
             article,
             country_code,
             country_name,
+            topic=topic,
+            category=category,
         )
     ):
         return "country_mismatch"
