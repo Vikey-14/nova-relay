@@ -1132,14 +1132,16 @@ async def news(
             "sortBy": "publishedAt",
         }
 
-        # Topic expressions contain multilingual aliases.
-        # Do not force one provider language for them.
-        if not topic:
-            params["language"] = (
-                lang
-                if lang in NEWSAPI_LANGUAGES
-                else "en"
-            )
+        # The query may contain multilingual aliases for recall,
+        # but returned articles must follow Nova's selected GUI
+        # language whenever NewsAPI supports that language.
+        #
+        # NewsAPI applies the language filter independently of
+        # the q expression, so this does not weaken multilingual
+        # topic recognition.
+        if lang in NEWSAPI_LANGUAGES:
+            params["language"] = lang
+
 
     else:
         url = (

@@ -604,6 +604,55 @@ SPORTS_GAMING_PATTERNS = (
 )
 
 
+SPORTS_REACTION_OR_PERSONALITY_PATTERNS = (
+    # Fan reaction, comparisons and social-media chatter are
+    # not the underlying sporting development.
+    r"\b(?:fans?|supporters?|social media|internet)\b"
+    r".{0,100}\b"
+    r"(?:compare|compares|compared|react|reacts|reacted|"
+    r"debate|mock|joke|believe|think)\b",
+
+    # Celebrity-owner or personality reaction pieces.
+    r"\b(?:reveals?|shares?)\s+how\s+"
+    r"(?:he|she|they)\s+feels?\b",
+
+    # Relationship and attendance stories are personality
+    # coverage, not developments in the requested sport.
+    r"\b(?:girlfriend|boyfriend|wife|husband|partner|"
+    r"fiance|fiancee)\b"
+    r".{0,120}\b"
+    r"(?:joins?|attends?|supports?|cheers?|watches?|"
+    r"visits?|celebrates?)\b",
+
+    r"\b(?:heartwarming|adorable|sweet)\b"
+    r".{0,60}\b"
+    r"(?:show|moment|support|gesture|reaction)\b",
+
+    # Sensationalized pundit takes and quote-led commentary.
+    r"\b(?:drops?|delivers?)\s+(?:a\s+)?"
+    r"(?:truth bomb|brutal verdict|honest take)\b",
+
+    # Hindi and Hinglish equivalents.
+    r"(?:प्रशंसक|फैंस).{0,100}"
+    r"(?:तुलना|प्रतिक्रिया|मज़ाक|मजाक|मानते)",
+
+    r"(?:गर्लफ्रेंड|बॉयफ्रेंड|पत्नी|पति|साथी)"
+    r".{0,100}"
+    r"(?:शामिल|समर्थन|देखने|हौसला|जश्न)",
+
+    # German, French and Spanish equivalents.
+    # Text is accent-folded before these expressions run.
+    r"\b(?:fans?|anhanger)\b.{0,100}\b"
+    r"(?:vergleichen|reagieren|spotten|glauben)\b",
+
+    r"\b(?:fans?|supporters?)\b.{0,100}\b"
+    r"(?:comparent|reagissent|se moquent|pensent)\b",
+
+    r"\b(?:aficionados?|hinchas?)\b.{0,100}\b"
+    r"(?:comparan|reaccionan|se burlan|creen)\b",
+)
+
+
 SPORTS_UTILITY_PATTERNS = (
     # English: match-reference and statistics pages.
     r"\b(?:pitch|venue|ground|court|track|course)\s+report\b",
@@ -990,6 +1039,10 @@ GENERIC_UTILITY_PATTERNS = (
     r"\b(?:what|all)\s+you\s+need\s+to\s+know\b",
     r"\b(?:what we know so far|what to know|"
     r"faq|frequently asked questions)\b",
+
+    # Rolling trackers and all-item performance pages are
+    # utilities, not one current headline event.
+    r"\b(?:tracking|track)\s+every\b",
 
     # Buying advice and product features.
     r"\b(?:buying guide|buyers?'? guide|"
@@ -1727,6 +1780,7 @@ def country_query_expression(
     )
 
 
+
 def country_relevant(
     article: dict,
     country_code: str,
@@ -1745,45 +1799,109 @@ def country_relevant(
     if not aliases:
         return True
 
-    combined = " ".join(
-        (
-            fold(
-                article.get("title")
-                or ""
-            ),
+    title = fold(
+        article.get("title")
+        or ""
+    )
 
-            fold(
-                article.get("description")
-                or ""
-            )[:800],
+    description = fold(
+        article.get("description")
+        or ""
+    )[:800]
+
+    exact_gb_key = (
+        _exact_gb_country_key(
+            country_name
         )
+        if str(
+            country_code or ""
+        ).casefold() == "gb"
+        else ""
     )
 
     # New England is a US region/team name, not England.
-    if (
-        str(
-            country_code or ""
-        ).casefold() == "gb"
-        and _exact_gb_country_key(
-            country_name
-        ) == "england"
-    ):
-        combined = re.sub(
+    if exact_gb_key == "england":
+        title = re.sub(
             r"(?<!\w)new\s+england(?!\w)",
             " ",
-            combined,
+            title,
             flags=re.I | re.UNICODE,
         )
 
-    return any(
-        phrase_present(
-            alias,
-            combined,
+        description = re.sub(
+            r"(?<!\w)new\s+england(?!\w)",
+            " ",
+            description,
+            flags=re.I | re.UNICODE,
         )
-        for alias in aliases
+
+    def mention_count(
+        text: str,
+        values: set[str],
+    ) -> int:
+        return sum(
+            len(
+                re.findall(
+                    r"(?<!\w)"
+                    + re.escape(value)
+                    + r"(?!\w)",
+                    text,
+                    flags=re.I | re.UNICODE,
+                )
+            )
+            for value in values
+            if value
+        )
+
+    title_hits = mention_count(
+        title,
+        aliases,
     )
 
+    description_hits = mention_count(
+        description,
+        aliases,
+    )
 
+    if exact_gb_key:
+        other_home_aliases = {
+            fold(alias)
+            for key, values in (
+                GB_HOME_NATION_ALIASES.items()
+            )
+            if key != exact_gb_key
+            for alias in values
+        }
+
+        other_title_hits = mention_count(
+            title,
+            other_home_aliases,
+        )
+
+        other_description_hits = mention_count(
+            description,
+            other_home_aliases,
+        )
+
+        # Exact home-nation requests are deliberately
+        # conservative. One incidental phrase such as
+        # "English League One" must not turn a Scottish
+        # or Welsh story into England news.
+        if other_title_hits:
+            return False
+
+        if title_hits:
+            return True
+
+        return bool(
+            description_hits >= 2
+            and other_description_hits == 0
+        )
+
+    return bool(
+        title_hits
+        or description_hits
+    )
 
 
 STOPWORDS = {
@@ -2527,6 +2645,18 @@ _DUPLICATE_TOKEN_SYNONYMS = {
     "appointment": "appoint",
     "starts": "appoint",
     "started": "appoint",
+    "become": "appoint",
+    "becomes": "appoint",
+    "became": "appoint",
+    "becoming": "appoint",
+    "name": "appoint",
+    "names": "appoint",
+    "named": "appoint",
+    "naming": "appoint",
+    "hire": "appoint",
+    "hires": "appoint",
+    "hired": "appoint",
+    "hiring": "appoint",
 
     "secures": "secure",
     "secured": "secure",
@@ -2581,6 +2711,19 @@ _DUPLICATE_GENERIC_TOKENS = {
     "latest",
     "update",
     "report",
+}
+
+
+_DUPLICATE_APPOINTMENT_ROLE_TOKENS = {
+    "coach",
+    "manager",
+    "director",
+    "chief",
+    "president",
+    "captain",
+    "minister",
+    "secretary",
+    "leader",
 }
 
 
@@ -2700,15 +2843,13 @@ def near_duplicate(
     if first_tokens == second_tokens:
         return True
 
-    if _conflicting_entities(
-        first,
-        second,
-    ):
-        return False
-
-    shared = len(
+    shared_tokens = (
         first_tokens
         & second_tokens
+    )
+
+    shared = len(
+        shared_tokens
     )
 
     smaller = min(
@@ -2736,6 +2877,26 @@ def near_duplicate(
         & _named_entities(second)
     )
 
+    appointment_duplicate = bool(
+        "appoint" in first_tokens
+        and "appoint" in second_tokens
+        and shared >= 3
+        and shared_entities >= 2
+        and bool(
+            shared_tokens
+            & _DUPLICATE_APPOINTMENT_ROLE_TOKENS
+        )
+    )
+
+    if appointment_duplicate:
+        return True
+
+    if _conflicting_entities(
+        first,
+        second,
+    ):
+        return False
+
     return bool(
         (
             shared >= 4
@@ -2747,6 +2908,7 @@ def near_duplicate(
             and similarity >= 0.68
         )
     )
+
 
 
 def articles_near_duplicate(
@@ -2864,6 +3026,18 @@ def rejection_reason(
         )
     ):
         return "sports_gaming_or_betting"
+
+    if (
+        sports_scope(
+            topic,
+            category,
+        )
+        and matches(
+            title,
+            SPORTS_REACTION_OR_PERSONALITY_PATTERNS,
+        )
+    ):
+        return "sports_reaction_or_personality"
 
     is_sports_utility = bool(
         matches(
