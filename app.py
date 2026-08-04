@@ -15,7 +15,6 @@ from urllib.parse import urlsplit
 
 from news_quality import (
     canonical_topic,
-    country_headline_search_terms,
     country_query_expression,
     prepare_news_payload,
     topic_query_expression,
@@ -873,10 +872,14 @@ def _prepare_news_payload(
 
 NEWS_EVERYTHING_CATEGORY_QUERIES = {
     "sports": (
-        # Generic category wording only. Country-scoped Sports
-        # requests use NewsAPI's native category=sports route,
-        # so no sport names or result verbs are enumerated here.
-        "(sport OR sports OR sporting)"
+        # Sport-agnostic discovery vocabulary. These are
+        # generic competition roles and event structures,
+        # not a whitelist of individual sports.
+        "(sport OR sports OR sporting OR athlete OR athletes OR "
+        "player OR players OR team OR teams OR club OR clubs OR "
+        "coach OR coaches OR tournament OR championship OR "
+        "competition OR league OR cup OR match OR race OR medal OR "
+        "podium OR transfer OR signing OR injury OR qualifier OR final)"
     ),
 
     "technology": (
@@ -1026,18 +1029,6 @@ def _build_news_everything_query(
             )
         )
 
-    elif (
-        clean_category == "sports"
-        and clean_country
-        and not world_scope
-    ):
-        # Country-scoped Sports fallback:
-        #
-        # Search by country only, then let Nova's strict
-        # Sports classifier inspect the returned articles.
-        # No list of sports is required.
-        subject_expression = ""
-
     elif clean_category:
         subject_expression = (
             NEWS_EVERYTHING_CATEGORY_QUERIES.get(
@@ -1055,27 +1046,12 @@ def _build_news_everything_query(
             or NEWS_WORLD_EVENT_QUERY
         )
 
-
     country_expression = (
         country_query_expression(
             country,
             clean_country,
             topic=clean_topic,
-
-            # Generic Sports fallback retrieval uses only
-            # country and demonym aliases.
-            #
-            # Domestic sporting aliases may still help the
-            # post-fetch relevance classifier, but they do
-            # not control which sports are retrieved.
-            category=(
-                ""
-                if (
-                    clean_category == "sports"
-                    and not clean_topic
-                )
-                else clean_category
-            ),
+            category=clean_category,
         )
     )
 
@@ -1229,8 +1205,7 @@ async def news(
     country_scope = bool(
         country
         and country_name
-        and country_name.casefold()
-        != "world"
+        and not world_scope
     )
 
     country_sports_scope = bool(
@@ -1239,32 +1214,15 @@ async def news(
         and not topic
     )
 
-    # Do not depend exclusively on country=jp/category=sports,
-    # country=in/category=sports, etc. The provider can return
-    # zero raw articles for those combinations.
-    #
-    # Instead search the global provider-verified Sports
-    # category using dynamic country/demonym terms.
-    provider_country_sports_search = bool(
-        mode != "everything"
-        and country_sports_scope
-    )
-
+    # Country-scoped requests use Everything because the
+    # Top Headlines country parameter represents the source
+    # market and may return no usable country/category pool.
     use_everything = bool(
         mode == "everything"
         or bool(topic)
-        or (
-            (
-                country_scope
-                or world_scope
-                or no_search_scope
-            )
-            and not provider_country_sports_search
-            and not (
-                category == "sports"
-                and not topic
-            )
-        )
+        or country_scope
+        or world_scope
+        or no_search_scope
     )
 
     endpoint_name = (
@@ -1273,9 +1231,85 @@ async def news(
         else "top-headlines"
     )
 
+    if use_everything:
+        url = (
+            "https://newsapi.org/v2/everything"
+        )
+
+        search_query = (
+            _build_news_everything_query(
+                topic,
+                country,
+                country_name,
+                category,
+            )
+        )
+
+        now = _news_now()
+        cutoff = _news_cutoff()
+
+        params = {
+            "q": search_query,
+
+            "from": _news_iso(
+                cutoff
+            ),
+
+            "to": _news_iso(
+                now
+            ),
+
+            "pageSize": (
+                100
+                if country_sports_scope
+                else min(
+                    max(
+                        count * 8,
+                        40,
+                    ),
+                    100,
+                )
+            ),
+
+            # Give scoped country-Sports searches the most
+            # relevant candidate pool. Nova performs its own
+            # final quality and freshness sorting afterward.
+            "sortBy": (
+                "relevancy"
+                if (
+                    country_sports_scope
+                    or topic
+                )
+                else "publishedAt"
+            ),
+
+            "page": 1,
+        }
+
+        if lang in NEWSAPI_LANGUAGES:
+            params["language"] = lang
+
+    else:
+        url = (
+            "https://newsapi.org/v2/top-headlines"
+        )
+
+        params = {
+            "pageSize": NEWS_TOP_FETCH_SIZE,
+            "page": 1,
+        }
+
+        if topic:
+            params["q"] = topic
+
+        if country_supported:
+            params["country"] = country
+
+        if category:
+            params["category"] = category
+
     async def _provider_get(
-        url: str,
-        params: dict,
+        request_params: dict,
         *,
         purpose: str,
     ) -> dict:
@@ -1283,21 +1317,36 @@ async def news(
             "[NEWS_RELAY] PROVIDER_REQUEST "
             f"purpose={purpose!r} "
             f"endpoint={endpoint_name!r} "
-            f"q={params.get('q', '')!r} "
-            f"q_len={len(params.get('q', ''))!r}",
+            f"q={request_params.get('q', '')!r} "
+            f"q_len={len(request_params.get('q', ''))!r} "
+            f"page={request_params.get('page', 1)!r}",
             flush=True,
         )
 
-        async with httpx.AsyncClient(
-            timeout=12
-        ) as client:
-            response = await client.get(
-                url,
-                params=params,
-                headers={
-                    "X-Api-Key": NEWS,
-                },
+        try:
+            async with httpx.AsyncClient(
+                timeout=12
+            ) as client:
+                response = await client.get(
+                    url,
+                    params=request_params,
+                    headers={
+                        "X-Api-Key": NEWS,
+                    },
+                )
+
+        except Exception as exc:
+            print(
+                "[NEWS_RELAY] PROVIDER_EXCEPTION "
+                f"purpose={purpose!r} "
+                f"error={exc!r}",
+                flush=True,
             )
+
+            raise HTTPException(
+                502,
+                "news provider request failed",
+            ) from exc
 
         if response.status_code != 200:
             provider_body = (
@@ -1308,7 +1357,7 @@ async def news(
                 "[NEWS_RELAY] PROVIDER_ERROR "
                 f"purpose={purpose!r} "
                 f"status={response.status_code!r} "
-                f"q_len={len(params.get('q', ''))!r} "
+                f"q_len={len(request_params.get('q', ''))!r} "
                 f"body={provider_body!r}",
                 flush=True,
             )
@@ -1334,59 +1383,121 @@ async def news(
 
         return provider_payload
 
-    if provider_country_sports_search:
-        url = (
-            "https://newsapi.org/v2/top-headlines"
+    provider_payload = await _provider_get(
+        params,
+        purpose="primary",
+    )
+
+    combined_articles = list(
+        provider_payload.get(
+            "articles"
         )
+        or []
+    )
 
-        search_terms = (
-            country_headline_search_terms(
-                country,
-                country_name,
-            )
+    provider_total = int(
+        provider_payload.get(
+            "totalResults"
         )
+        or 0
+    )
 
-        if not search_terms and country_name:
-            search_terms = (
-                country_name,
-            )
+    # The Top Headlines Sports category or the explicit
+    # generic Sports query establishes the Sports scope.
+    # No individual sport must appear in Nova's vocabulary.
+    sports_scope_verified = bool(
+        category == "sports"
+        and (
+            endpoint_name == "top-headlines"
+            or country_sports_scope
+        )
+    )
 
-        combined_articles: list[dict] = []
-        terms_tried: list[str] = []
-        provider_total = 0
+    payload = prepare_news_payload(
+        {
+            **provider_payload,
+            "articles": combined_articles,
+        },
+        count,
+        topic=topic,
+        category=category,
+        country_code=country,
+        country_name=country_name,
+        fresh_days=NEWS_FRESH_DAYS,
+        provider_category_verified=(
+            sports_scope_verified
+        ),
+    )
 
-        payload: dict = {
-            "status": "ok",
-            "articles": [],
-            "totalResults": 0,
-        }
+    pages_fetched = 1
 
-        for search_term in search_terms:
-            params = {
-                "category": "sports",
-                "q": search_term,
-                "pageSize": NEWS_TOP_FETCH_SIZE,
-            }
-
-            provider_payload = await _provider_get(
-                url,
-                params,
-                purpose="country_sports_alias",
-            )
-
-            terms_tried.append(
-                search_term
-            )
-
-            provider_total += int(
-                provider_payload.get(
-                    "totalResults"
+    # If strict filtering leaves fewer than requested,
+    # inspect further pages of the same query. This expands
+    # recall without listing sports, teams, players or events.
+    if (
+        endpoint_name == "everything"
+        and country_sports_scope
+        and len(
+            payload.get("articles")
+            or []
+        ) < requested_count
+    ):
+        max_pages = min(
+            3,
+            max(
+                1,
+                (
+                    provider_total
+                    + int(
+                        params["pageSize"]
+                    )
+                    - 1
                 )
-                or 0
+                // int(
+                    params["pageSize"]
+                ),
+            ),
+        )
+
+        for page_number in range(
+            2,
+            max_pages + 1,
+        ):
+            page_params = dict(
+                params
+            )
+
+            page_params["page"] = (
+                page_number
+            )
+
+            try:
+                next_payload = (
+                    await _provider_get(
+                        page_params,
+                        purpose=(
+                            "country_sports_page"
+                        ),
+                    )
+                )
+
+            except HTTPException as exc:
+                # Keep valid page-one results if an additional
+                # provider page is unavailable.
+                print(
+                    "[NEWS_RELAY] PAGE_RECALL_STOP "
+                    f"page={page_number!r} "
+                    f"detail={exc.detail!r}",
+                    flush=True,
+                )
+                break
+
+            pages_fetched = (
+                page_number
             )
 
             combined_articles.extend(
-                provider_payload.get(
+                next_payload.get(
                     "articles"
                 )
                 or []
@@ -1395,8 +1506,12 @@ async def news(
             payload = prepare_news_payload(
                 {
                     "status": "ok",
-                    "articles": combined_articles,
-                    "totalResults": provider_total,
+                    "articles": (
+                        combined_articles
+                    ),
+                    "totalResults": (
+                        provider_total
+                    ),
                 },
                 count,
                 topic=topic,
@@ -1404,7 +1519,9 @@ async def news(
                 country_code=country,
                 country_name=country_name,
                 fresh_days=NEWS_FRESH_DAYS,
-                provider_category_verified=True,
+                provider_category_verified=(
+                    sports_scope_verified
+                ),
             )
 
             if len(
@@ -1413,174 +1530,37 @@ async def news(
             ) >= requested_count:
                 break
 
-        # A headline may identify only the club or athlete.
-        # Search the provider's global Sports pool once and
-        # let Nova's country classifier inspect it.
-        if len(
-            payload.get("articles")
-            or []
-        ) < requested_count:
-            global_params = {
-                "category": "sports",
-                "pageSize": NEWS_TOP_FETCH_SIZE,
-            }
-
-            global_payload = await _provider_get(
-                url,
-                global_params,
-                purpose="global_sports_pool",
-            )
-
-            terms_tried.append(
-                "<global sports pool>"
-            )
-
-            provider_total += int(
-                global_payload.get(
-                    "totalResults"
-                )
-                or 0
-            )
-
-            combined_articles.extend(
-                global_payload.get(
-                    "articles"
-                )
-                or []
-            )
-
-            payload = prepare_news_payload(
-                {
-                    "status": "ok",
-                    "articles": combined_articles,
-                    "totalResults": provider_total,
-                },
-                count,
-                topic=topic,
-                category=category,
-                country_code=country,
-                country_name=country_name,
-                fresh_days=NEWS_FRESH_DAYS,
-                provider_category_verified=True,
-            )
-
-        payload["nova_discovery"] = {
-            "strategy": (
-                "provider_sports_category_"
-                "country_alias_search"
-            ),
-            "terms_tried": terms_tried,
-            "provider_total": provider_total,
-        }
-
-    else:
-        if use_everything:
-            url = (
-                "https://newsapi.org/v2/everything"
-            )
-
-            search_query = (
-                _build_news_everything_query(
-                    topic,
-                    country,
-                    country_name,
-                    category,
-                )
-            )
-
-            now = _news_now()
-            cutoff = _news_cutoff()
-
-            params = {
-                "q": search_query,
-
-                "from": _news_iso(
-                    cutoff
-                ),
-
-                "to": _news_iso(
-                    now
-                ),
-
-                "pageSize": (
-                    100
-                    if country_sports_scope
-                    else min(
-                        max(
-                            count * 8,
-                            40,
-                        ),
-                        100,
-                    )
-                ),
-
-                "sortBy": "publishedAt",
-            }
-
-            if lang in NEWSAPI_LANGUAGES:
-                params["language"] = lang
-
-        else:
-            url = (
-                "https://newsapi.org/v2/top-headlines"
-            )
-
-            params = {
-                "pageSize": NEWS_TOP_FETCH_SIZE,
-            }
-
-            if topic:
-                params["q"] = topic
-
-            if country_supported:
-                params["country"] = country
-
-            if category:
-                params["category"] = category
-
-        provider_payload = await _provider_get(
-            url,
-            params,
-            purpose="primary",
-        )
-
-        raw_count = len(
-            provider_payload.get(
-                "articles"
-            )
-            or []
-        )
-
-        raw_total = int(
-            provider_payload.get(
-                "totalResults"
-            )
-            or 0
-        )
-
-        payload = prepare_news_payload(
-            provider_payload,
-            count,
-            topic=topic,
-            category=category,
-            country_code=country,
-            country_name=country_name,
-            fresh_days=NEWS_FRESH_DAYS,
-            provider_category_verified=bool(
-                endpoint_name == "top-headlines"
-                and category == "sports"
-            ),
-        )
-
-        payload["nova_discovery"] = {
-            "strategy": "primary",
-            "raw_count": raw_count,
-            "provider_total": raw_total,
-        }
-
     payload["nova_endpoint"] = (
         endpoint_name
     )
+
+    payload["nova_discovery"] = {
+        "strategy": (
+            "country_sports_everything"
+            if country_sports_scope
+            else "primary"
+        ),
+
+        "query": params.get(
+            "q",
+            "",
+        ),
+
+        "query_length": len(
+            params.get(
+                "q",
+                "",
+            )
+        ),
+
+        "provider_total": (
+            provider_total
+        ),
+
+        "pages_fetched": (
+            pages_fetched
+        ),
+    }
 
     quality = (
         payload.get("nova_quality")
