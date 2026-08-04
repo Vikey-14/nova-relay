@@ -1,10 +1,23 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+from functools import lru_cache
 from urllib.parse import urlsplit
 
 import re
 import unicodedata
+
+
+@lru_cache(
+    maxsize=8192
+)
+def _compiled_regex(
+    pattern: str,
+):
+    return re.compile(
+        pattern,
+        flags=re.I | re.UNICODE,
+    )
 
 
 # Conservative by design:
@@ -3298,18 +3311,20 @@ def country_relevant(
     ) -> int:
         return sum(
             len(
-                re.findall(
+                _compiled_regex(
                     r"(?<!\w)"
-                    + re.escape(value)
-                    + r"(?!\w)",
-                    text,
-                    flags=re.I | re.UNICODE,
+                    + re.escape(
+                        value
+                    )
+                    + r"(?!\w)"
+                ).findall(
+                    text
                 )
             )
             for value in values
             if value
         )
-
+    
     base_title_hits = mention_count(
         title,
         base_aliases,
@@ -3581,13 +3596,15 @@ def matches(
     value: object,
     patterns: tuple[str, ...],
 ) -> bool:
-    text = fold(value)
+    text = fold(
+        value
+    )
 
     return any(
-        re.search(
-            pattern,
-            text,
-            flags=re.I | re.UNICODE,
+        _compiled_regex(
+            pattern
+        ).search(
+            text
         )
         for pattern in patterns
     )
@@ -3597,13 +3614,19 @@ def phrase_present(
     phrase: str,
     text: str,
 ) -> bool:
+    pattern = (
+        r"(?<!\w)"
+        + re.escape(
+            phrase
+        )
+        + r"(?!\w)"
+    )
+
     return bool(
-        re.search(
-            r"(?<!\w)"
-            + re.escape(phrase)
-            + r"(?!\w)",
-            text,
-            flags=re.I | re.UNICODE,
+        _compiled_regex(
+            pattern
+        ).search(
+            text
         )
     )
 
