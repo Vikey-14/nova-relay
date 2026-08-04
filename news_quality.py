@@ -2289,6 +2289,162 @@ COUNTRY_RELEVANCE_ALIASES = {
     ),
 }
 
+# Additional common country names, demonyms and sporting
+# designations. These improve recall but do not control
+# which countries Nova supports.
+COUNTRY_RELEVANCE_ALIASES[
+    "gb"
+] += (
+    "Great Britain",
+    "Team GB",
+)
+
+COUNTRY_RELEVANCE_ALIASES[
+    "tw"
+] += (
+    "Chinese Taipei",
+)
+
+COUNTRY_RELEVANCE_ALIASES[
+    "hk"
+] += (
+    "Hong Kong, China",
+)
+
+COUNTRY_RELEVANCE_ALIASES[
+    "ie"
+] += (
+    "Republic of Ireland",
+)
+
+COUNTRY_RELEVANCE_ALIASES.update(
+    {
+        "ba": (
+            "Bosnia and Herzegovina",
+            "Bosnian",
+        ),
+
+        "bn": (
+            "Brunei",
+            "Bruneian",
+        ),
+
+        "bo": (
+            "Bolivia",
+            "Bolivian",
+        ),
+
+        "cd": (
+            "DR Congo",
+            "Democratic Republic of the Congo",
+            "Congo-Kinshasa",
+        ),
+
+        "cg": (
+            "Republic of the Congo",
+            "Congo-Brazzaville",
+        ),
+
+        "ci": (
+            "Ivory Coast",
+            "Côte d'Ivoire",
+            "Ivorian",
+        ),
+
+        "cv": (
+            "Cabo Verde",
+            "Cape Verde",
+            "Cape Verdean",
+        ),
+
+        "fm": (
+            "Micronesia",
+            "Micronesian",
+        ),
+
+        "ir": (
+            "Iran",
+            "Iranian",
+        ),
+
+        "kp": (
+            "North Korea",
+            "North Korean",
+        ),
+
+        "la": (
+            "Laos",
+            "Lao",
+        ),
+
+        "md": (
+            "Moldova",
+            "Moldovan",
+        ),
+
+        "mk": (
+            "North Macedonia",
+            "Macedonian",
+        ),
+
+        "mm": (
+            "Myanmar",
+            "Burma",
+            "Burmese",
+        ),
+
+        "mo": (
+            "Macao",
+            "Macau",
+            "Macanese",
+        ),
+
+        "ps": (
+            "Palestine",
+            "Palestinian",
+        ),
+
+        "sy": (
+            "Syria",
+            "Syrian",
+        ),
+
+        "sz": (
+            "Eswatini",
+            "Swaziland",
+            "Swazi",
+        ),
+
+        "tl": (
+            "Timor-Leste",
+            "East Timor",
+            "Timorese",
+        ),
+
+        "tz": (
+            "Tanzania",
+            "Tanzanian",
+        ),
+
+        "va": (
+            "Vatican City",
+            "Holy See",
+        ),
+
+        "vn": (
+            "Vietnam",
+            "Viet Nam",
+            "Vietnamese",
+        ),
+
+        # Nova's News-only Kosovo scope.
+        "xk": (
+            "Kosovo",
+            "Kosovan",
+            "Kosovar",
+        ),
+    }
+)
 
 GB_HOME_NATION_ALIASES = {
     "england": (
