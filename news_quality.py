@@ -3056,6 +3056,25 @@ def _country_mentions_are_incidental_only(
                 )
             )
 
+            secondary_quote_reference = bool(
+                re.search(
+                    r"\b(?:after|following|amid)\s*$",
+                    prefix,
+                    flags=(
+                        re.I
+                        | re.UNICODE
+                    ),
+                )
+                and re.search(
+                    r"^\s+['\"“”‘’]",
+                    suffix,
+                    flags=(
+                        re.I
+                        | re.UNICODE
+                    ),
+                )
+            )
+
             unsuccessful_alternative_reference = bool(
                 re.search(
                     r"\b(?:instead\s+of|rather\s+than|"
@@ -3140,6 +3159,7 @@ def _country_mentions_are_incidental_only(
                     venue_reference,
                     future_opponent_reference,
                     comparison_reference,
+                    secondary_quote_reference,
                     unsuccessful_alternative_reference,
                     preview_or_absence_reference,
                     event_scope_reference,
