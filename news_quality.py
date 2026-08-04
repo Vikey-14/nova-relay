@@ -2373,6 +2373,35 @@ def _country_alias_values(
     )
 
 
+def country_headline_search_terms(
+    country_code: str,
+    country_name: str,
+    *,
+    limit: int = 6,
+) -> tuple[str, ...]:
+    """
+    Return safe geographical terms for provider-side
+    Sports discovery.
+
+    These are country and demonym aliases only. No sport,
+    league, competition or result term is listed here.
+    """
+
+    values = _country_alias_values(
+        country_code,
+        country_name,
+    )
+
+    return tuple(
+        values[
+            :max(
+                1,
+                int(limit or 1),
+            )
+        ]
+    )
+
+
 def country_query_expression(
     country_code: str,
     country_name: str,
@@ -2448,6 +2477,7 @@ def country_relevant(
     *,
     topic: str = "",
     category: str = "",
+    provider_category_verified: bool = False,
 ) -> bool:
     sports_request = sports_scope(
         topic,
@@ -2697,7 +2727,10 @@ def country_relevant(
             sports_request
             and body_country_hits >= 1
             and sports_development_relevant(
-                article
+                article,
+                provider_category_verified=(
+                    provider_category_verified
+                ),
             )
         )
         or body_country_hits >= 2
@@ -4123,6 +4156,9 @@ def rejection_reason(
             country_name,
             topic=topic,
             category=category,
+            provider_category_verified=(
+                provider_category_verified
+            ),
         )
     ):
         return "country_mismatch"
