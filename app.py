@@ -1286,9 +1286,17 @@ async def news(
             "page": 1,
         }
 
+        if country_scope:
+            # A country must appear in the headline or provider
+            # description. Do not retrieve an unrelated article
+            # merely because the country is mentioned somewhere
+            # in its truncated body.
+            params["searchIn"] = (
+                "title,description"
+            )
+
         if lang in NEWSAPI_LANGUAGES:
             params["language"] = lang
-
     else:
         url = (
             "https://newsapi.org/v2/top-headlines"

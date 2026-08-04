@@ -2123,6 +2123,10 @@ COUNTRY_RELEVANCE_ALIASES = {
         "Greece",
         "Greek",
     ),
+    "gy": (
+        "Guyana",
+        "Guyanese",
+    ),
     "hk": (
         "Hong Kong",
     ),
@@ -3325,35 +3329,19 @@ def country_relevant(
         return base_description_hits >= 2
 
 
-    # Normal countries prefer direct title/description
-    # evidence. For a verified sporting development, one
-    # country or demonym mention in the body is sufficient:
-    # sports headlines often name only the athlete or club in
-    # the title and say "Japanese", "Indian", "German", etc.
-    # once in the article body.
-    body_country_hits = (
-        base_content_hits
-        + sports_content_hits
-    )
-
+    # Country-scoped news must identify the requested country
+    # in the headline or the provider description.
+    #
+    # A passing mention buried in the article body is not
+    # enough. This prevents an unrelated domestic story from
+    # qualifying merely because the body mentions another
+    # country, tour, venue or opponent.
     return bool(
         base_title_hits
         or base_description_hits
         or sports_title_hits
         or sports_description_hits
-        or (
-            sports_request
-            and body_country_hits >= 1
-            and sports_development_relevant(
-                article,
-                provider_category_verified=(
-                    provider_category_verified
-                ),
-            )
-        )
-        or body_country_hits >= 2
     )
-
 
 
 STOPWORDS = {
@@ -4253,6 +4241,14 @@ _DUPLICATE_TRANSACTION_ACTION_TOKENS = {
 }
 
 
+_DUPLICATE_STATUS_ACTION_RE = re.compile(
+    r"\b(?:ruled\s+out|to\s+miss|miss(?:es|ed|ing)?|"
+    r"unavailable|withdraw(?:s|n)?|sidelined|"
+    r"injur(?:y|ies|ed))\b",
+    flags=re.I | re.UNICODE,
+)
+
+
 def _semantic_duplicate_tokens(
     value: object,
 ) -> list[str]:
@@ -4282,6 +4278,134 @@ def _semantic_duplicate_tokens(
         )
 
     return output
+
+
+def _status_subject_phrases(
+    value: object,
+) -> set[str]:
+    text = str(
+        value or ""
+    )
+
+    output: set[str] = set()
+
+    for action in (
+        _DUPLICATE_STATUS_ACTION_RE.finditer(
+            text
+        )
+    ):
+        prefix = text[
+            max(
+                0,
+                action.start() - 100,
+            ):
+            action.start()
+        ]
+
+        phrases = re.findall(
+            r"(?<!\w)"
+            r"([A-Z][\w'’.-]*"
+            r"(?:\s+[A-Z][\w'’.-]*){1,3})"
+            r"(?!\w)",
+            prefix,
+            flags=re.UNICODE,
+        )
+
+        if not phrases:
+            continue
+
+        phrase = fold(
+            phrases[-1]
+        )
+
+        if phrase:
+            output.add(
+                phrase
+            )
+
+    return output
+
+
+def _capitalized_phrase_ngrams(
+    value: object,
+) -> set[str]:
+    text = str(
+        value or ""
+    )
+
+    output: set[str] = set()
+
+    for sequence in re.findall(
+        r"(?<!\w)"
+        r"([A-Z][\w'’.-]*"
+        r"(?:\s+[A-Z][\w'’.-]*)+)",
+        text,
+        flags=re.UNICODE,
+    ):
+        words = sequence.split()
+
+        for size in (
+            2,
+            3,
+        ):
+            for start in range(
+                0,
+                len(words) - size + 1,
+            ):
+                output.add(
+                    fold(
+                        " ".join(
+                            words[
+                                start:
+                                start + size
+                            ]
+                        )
+                    )
+                )
+
+    return output
+
+
+def _same_person_status_story(
+    first: str,
+    second: str,
+) -> bool:
+    shared_subjects = (
+        _status_subject_phrases(
+            first
+        )
+        & _status_subject_phrases(
+            second
+        )
+    )
+
+    if not shared_subjects:
+        return False
+
+    first_anchors = (
+        _capitalized_phrase_ngrams(
+            first
+        )
+        - shared_subjects
+    )
+
+    second_anchors = (
+        _capitalized_phrase_ngrams(
+            second
+        )
+        - shared_subjects
+    )
+
+    # Require another shared named anchor beyond the person:
+    # an opponent, country, club or competition.
+    #
+    # This merges reports about the same absence while
+    # preserving absences against different opponents.
+    return bool(
+        first_anchors
+        & second_anchors
+    )
+
 
 def _named_entities(
     value: object,
@@ -4381,6 +4505,13 @@ def _conflicting_entities(
     first: str,
     second: str,
 ) -> bool:
+
+    if _same_person_status_story(
+        first,
+        second,
+    ):
+        return True
+    
     first_entities = _entity_aliases(
         first
     )
@@ -4408,8 +4539,8 @@ def _conflicting_entities(
         shared
         and first_only
         and second_only
-        and len(first_only) <= 2
-        and len(second_only) <= 2
+        and len(first_only) <= 3
+        and len(second_only) <= 3
     )
 
 def near_duplicate(
@@ -4525,6 +4656,20 @@ def near_duplicate(
             & first_expanded
         )
     )
+
+    if (
+        _DUPLICATE_STATUS_ACTION_RE.search(
+            first
+        )
+        and _DUPLICATE_STATUS_ACTION_RE.search(
+            second
+        )
+        and _conflicting_entities(
+            first,
+            second,
+        )
+    ):
+        return False
 
     transaction_duplicate = bool(
         shared_tokens
