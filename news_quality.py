@@ -738,14 +738,65 @@ SPORTS_PERSONALITY_ATTENDANCE_PATTERNS = (
 
 
 SPORTS_ANALYSIS_FEATURE_PATTERNS = (
-    # Evaluative and retrospective sports features.
+    # Evaluative sports features rather than one direct event.
     r"\b(?:proves?|shows?|demonstrates?)\b"
     r".{0,120}\b"
     r"(?:the real deal|why|what it takes|a point)\b",
 
     r"\b(?:verdict|takeaways?|lessons?|"
     r"what we learned|winners? and losers?)\b",
+
+    # Forecasts, projected selections and hypothetical outcomes.
+    r"\b(?:predicting?|predictions?|projecting?|projections?|"
+    r"forecasting?|forecast)\b"
+    r".{0,160}\b"
+    r"(?:roster|lineup|squad|selection|winner|champion|"
+    r"outcome|season|tournament|world cup|qualification)\b",
+
+    # Outlook pieces that discuss whether success may happen
+    # someday instead of reporting a new result or decision.
+    r"\b(?:distant dream|long shot|far from reality|"
+    r"years? away|still a dream|road to qualification)\b",
+
+    # Retrospective memory and regret pieces about old events.
+    r"\b(?:recalls?|remembers?|reminisces?|reflects? on|"
+    r"looks? back on|revisits?)\b"
+    r".{0,180}\b"
+    r"(?:regret|memory|final|match|tournament|world cup|"
+    r"olympics?|19\d{2}|20\d{2})\b",
+
+    # Rhetorical sports-versus-market commentary. A direct
+    # valuation report such as "league value rises" does not
+    # match this contrast structure.
+    r"\b(?:wins?|won|loses?|lost)\b"
+    r".{0,100}\b(?:and|but)\b"
+    r".{0,100}\b(?:wins?|won|loses?|lost)\b"
+    r".{0,80}\b(?:market|investors?|shares?|stocks?|"
+    r"sales|profit|valuation)\b",
+
+    # Hindi and Hinglish equivalents.
+    r"(?:भविष्यवाणी|अनुमान|संभावित टीम|दूर का सपना|"
+    r"याद किया|याद करते|पछतावा)",
+
+    # German, French and Spanish. Text is accent-folded
+    # before matching.
+    r"\b(?:prognose|vorhersage|kaderprognose|"
+    r"voraussichtlicher kader|ruckblick|erinnert sich|"
+    r"ferner traum)\b",
+
+    r"\b(?:prediction|pronostic|projection|"
+    r"composition probable|se souvient|revient sur|"
+    r"reve lointain)\b",
+
+    r"\b(?:prediccion|pronostico|proyeccion|"
+    r"plantilla prevista|recuerda|repasa|sueno lejano)\b",
+
+    r"\b(?:gewinnt|gagne|gana)\b.{0,100}\b"
+    r"(?:verliert|perd|pierde)\b.{0,80}\b"
+    r"(?:markt|marche|mercado)\b",
 )
+
+
 
 
 SPORTS_QUOTE_COMMENTARY_PATTERNS = (
@@ -2613,6 +2664,108 @@ def country_relevant(
         base_title_hits
         + sports_title_hits
     )
+
+    def strong_country_sports_evidence(
+        text: str,
+        values: set[str],
+    ) -> bool:
+        # A country or demonym is strong evidence when it is
+        # directly attached to a sporting participant, team,
+        # governing body or domestic competition. A bare venue
+        # phrase such as "tournament in Germany" is weaker.
+        subject = (
+            r"(?:national\s+team|team|club|player|athlete|"
+            r"coach|manager|captain|squad|international|"
+            r"federation|association|league|championship|"
+            r"medallist|medalist|defender|midfielder|striker|"
+            r"goalkeeper|bowler|batter|golfer|swimmer|cyclist|"
+            r"runner|boxer|judoka)"
+        )
+
+        for value in values:
+            if not value:
+                continue
+
+            country_pattern = (
+                r"(?<!\w)"
+                + re.escape(value)
+                + r"(?!\w)"
+            )
+
+            # German club, Japan national team, Indian player.
+            if re.search(
+                country_pattern
+                + r"(?:\s+[^\W_]+){0,3}\s+"
+                + subject
+                + r"\b",
+                text,
+                flags=re.I | re.UNICODE,
+            ):
+                return True
+
+            # Player for Germany, captain of India.
+            if re.search(
+                r"\b"
+                + subject
+                + r"\b.{0,25}\b"
+                r"(?:for|of|representing)\s+"
+                + country_pattern,
+                text,
+                flags=re.I | re.UNICODE,
+            ):
+                return True
+
+            # Club/team/league in Germany is domestic evidence,
+            # unlike a generic tournament merely held there.
+            if re.search(
+                r"\b(?:club|team|league|federation|association)"
+                r"\b.{0,25}\bin\s+"
+                + country_pattern,
+                text,
+                flags=re.I | re.UNICODE,
+            ):
+                return True
+
+        return False
+
+    # For ordinary country requests, a headline explicitly
+    # centred on another sovereign country must not qualify
+    # merely because the requested country appears as the host
+    # or venue in the description or article body.
+    if not exact_gb_key:
+        requested_code = str(
+            country_code or ""
+        ).strip().casefold()
+
+        other_country_title_aliases = {
+            fold(alias)
+            for code, values in (
+                COUNTRY_RELEVANCE_ALIASES.items()
+            )
+            if code != requested_code
+            for alias in values
+            if fold(alias)
+        }
+
+        other_country_title_hits = mention_count(
+            title,
+            other_country_title_aliases,
+        )
+
+        strong_requested_description = bool(
+            sports_description_hits
+            or strong_country_sports_evidence(
+                description,
+                base_aliases,
+            )
+        )
+
+        if (
+            other_country_title_hits
+            and not requested_title_hits
+            and not strong_requested_description
+        ):
+            return False
 
     if exact_gb_key:
         other_base_aliases = {
