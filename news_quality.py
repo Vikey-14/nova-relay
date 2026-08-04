@@ -2155,6 +2155,11 @@ COUNTRY_RELEVANCE_ALIASES = {
         "Japan",
         "Japanese",
     ),
+    "lk": (
+        "Sri Lanka",
+        "Sri Lankan",
+        "Lankan",
+    ),
     "kr": (
         "South Korea",
         "Korean",
@@ -2267,6 +2272,17 @@ COUNTRY_RELEVANCE_ALIASES = {
         "Venezuela",
         "Venezuelan",
     ),
+
+    # West Indies is a multinational sporting region/team,
+    # represented by Nova's News-only pseudo-code "wi".
+    "wi": (
+        "West Indies",
+        "West Indian",
+        "Windies",
+        "Cricket West Indies",
+        "CWI",
+    ),
+
     "za": (
         "South Africa",
         "South African",
