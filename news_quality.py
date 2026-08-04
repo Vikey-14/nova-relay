@@ -746,6 +746,12 @@ SPORTS_REACTION_OR_PERSONALITY_PATTERNS = (
     r"\b(?:drops?|delivers?)\s+(?:a\s+)?"
     r"(?:truth bomb|brutal verdict|honest take)\b",
 
+    # Sensationalized or unsupported pundit claims.
+    r"\b(?:weird|bizarre|strange|bold|controversial)\s+claim\b",
+
+    r"\bmakes?\s+(?:a\s+)?(?:weird|bizarre|strange|bold|"
+    r"controversial)\s+claim\b",
+
     # Hindi and Hinglish equivalents.
     r"(?:प्रशंसक|फैंस).{0,100}"
     r"(?:तुलना|प्रतिक्रिया|मज़ाक|मजाक|मानते)",
@@ -834,6 +840,21 @@ SPORTS_ANALYSIS_FEATURE_PATTERNS = (
     r".{0,80}\b(?:market|investors?|shares?|stocks?|"
     r"sales|profit|valuation)\b",
 
+    # Speculative career-crisis, rumour and hypothetical pieces.
+    r"\b(?:could|may|might)\s+face\s+(?:a\s+)?"
+    r"(?:career\s+)?(?:crisis|threat|uncertainty|end)\b",
+
+    r"\b(?:rumou?red|speculated|hypothetical)\b"
+    r".{0,140}\b(?:reunion|return|move|transfer|deal)\b",
+
+    # Workload histories and old rule retrospectives.
+    r"^\s*managing\b.{0,140}:",
+
+    r"\bevery\b.{0,140}\b"
+    r"(?:series|matches?|games?|tournaments?)\s+missed\b",
+
+    r"\b(?:rewrote|changed)\s+(?:the\s+)?rules\b",
+
     # Hindi and Hinglish equivalents.
     r"(?:भविष्यवाणी|अनुमान|संभावित टीम|दूर का सपना|"
     r"याद किया|याद करते|पछतावा)",
@@ -868,6 +889,22 @@ SPORTS_QUOTE_COMMENTARY_PATTERNS = (
     r"(?:must improve|need(?:s)? to improve|should improve|"
     r"can win|will win|to win|title challenge|"
     r"favourites?|favorites?)\b",
+)
+
+
+SPORTS_NONCOMPETITIVE_LEGAL_PATTERNS = (
+    # Personal criminal, harassment and misconduct proceedings
+    # are legal news about a sports figure, not a sporting result.
+    r"\b(?:court|judge|jury|police|prosecutors?|trial|lawsuit|"
+    r"charges?|charged|acquits?|acquitted|convicts?|convicted|"
+    r"arrests?|arrested)\b.{0,180}\b"
+    r"(?:harassment|assault|abuse|fraud|corruption|crime|"
+    r"criminal|misconduct)\b",
+
+    r"\b(?:harassment|assault|abuse|fraud|corruption|crime|"
+    r"criminal|misconduct)\b.{0,180}\b"
+    r"(?:court|judge|jury|police|trial|charges?|charged|"
+    r"acquits?|acquitted|convicts?|convicted|arrests?|arrested)\b",
 )
 
 
@@ -2879,60 +2916,41 @@ def country_query_expression(
         + ")"
     )
 
+COUNTRY_OWNERSHIP_SUBJECT_PATTERN = (
+    r"(?:government|parliament|congress|court|central bank|"
+    r"ministry|minister|president|prime minister|regulator|"
+    r"authority|military|police|company|firm|startup|bank|"
+    r"manufacturer|business|university|researchers?|scientists?|"
+    r"laborator(?:y|ies)|space agency|hospital|health authority|"
+    r"film|movie|actor|actress|singer|director|national team|team|"
+    r"club|players?|athletes?|coaches?|managers?|captains?|squads?|"
+    r"internationals?|federation|association|league|championship|"
+    r"medallists?|medalists?|defenders?|midfielders?|strikers?|"
+    r"goalkeepers?|bowlers?|batters?|pitchers?|golfers?|swimmers?|"
+    r"cyclists?|runners?|boxers?|judokas?|drivers?)"
+)
 
-def _country_reference_is_secondary_only(
-    title: str,
+
+COUNTRY_SOURCE_DESCRIPTOR_PATTERN = (
+    r"(?:news\s+)?(?:outlet|publication|newspaper|website|site|"
+    r"media|broadcaster|magazine|journal|agency|report|source)"
+)
+
+
+def _country_mentions_are_incidental_only(
+    text: str,
     aliases: set[str],
 ) -> bool:
     """
     Return True when every requested-country mention is only
-    a comparison, precedent or future-opponent reference.
-
-    Rejected for that country:
-      FA set to follow Welsh FA...
-      Singapore will face Indonesia, Malaysia and India
-
-    Preserved:
-      Wales withdraws support...
-      India beat Australia...
+    a venue, source, list item, comparison or future opponent.
     """
 
-    text = fold(
-        title
+    folded_text = fold(
+        text
     )
 
     found = False
-
-    secondary_prefix_patterns = (
-        # English.
-        r"\b(?:follow|follows|followed|following|"
-        r"mirror|mirrors|mirrored|mirroring|"
-        r"echo|echoes|echoed|echoing)\b.{0,45}$",
-
-        r"\b(?:like|in line with|"
-        r"compared with|compared to)\b.{0,45}$",
-
-        r"\b(?:will|to|set to|scheduled to|due to)\s+"
-        r"(?:face|play|meet)\b.{0,90}$",
-
-        r"\b(?:drawn|grouped)\s+with\b.{0,90}$",
-
-        # Hindi and Hinglish.
-        r"(?:का अनुसरण|की तरह|"
-        r"का सामना करेगा|से भिड़ेगा).{0,70}$",
-
-        # German.
-        r"\b(?:folgt|nach dem vorbild von|"
-        r"trifft auf|spielt gegen)\b.{0,70}$",
-
-        # French.
-        r"\b(?:suit|a l instar de|"
-        r"affrontera|jouera contre)\b.{0,70}$",
-
-        # Spanish.
-        r"\b(?:sigue a|al igual que|"
-        r"se enfrentara a|jugara contra)\b.{0,70}$",
-    )
 
     for alias in aliases:
         clean_alias = fold(
@@ -2952,32 +2970,237 @@ def _country_reference_is_secondary_only(
         )
 
         for occurrence in alias_pattern.finditer(
-            text
+            folded_text
         ):
             found = True
 
-            prefix = text[
+            prefix = folded_text[
                 max(
                     0,
-                    occurrence.start() - 120,
+                    occurrence.start() - 160,
                 ):
                 occurrence.start()
             ]
 
-            if not any(
+            suffix = folded_text[
+                occurrence.end():
+                occurrence.end() + 160
+            ]
+
+            source_reference = bool(
                 re.search(
-                    pattern,
+                    r"^\s+(?:'s\s+)?"
+                    + COUNTRY_SOURCE_DESCRIPTOR_PATTERN
+                    + r"\b",
+                    suffix,
+                    flags=re.I | re.UNICODE,
+                )
+            )
+
+            venue_reference = bool(
+                re.search(
+                    r"(?:held\s+in|hosted\s+in|staged\s+in|"
+                    r"scheduled\s+in|set\s+in|"
+                    r"takes?\s+place\s+in|to\s+be\s+held\s+in|"
+                    r"bound\s+for|heads?\s+to|headed\s+to|"
+                    r"travels?\s+to|arrives?\s+in|lands?\s+in)\s*$",
                     prefix,
                     flags=re.I | re.UNICODE,
                 )
-                for pattern
-                in secondary_prefix_patterns
+                or re.search(
+                    r"\b(?:games?|tournament|championship|cup|"
+                    r"match|race|test|series|conference|summit|"
+                    r"expo|festival|ceremony|event)\b"
+                    r".{0,90}\b(?:in|at)\s*$",
+                    prefix,
+                    flags=re.I | re.UNICODE,
+                )
+                or re.search(
+                    r"^\s*[- ]?hosted\b",
+                    suffix,
+                    flags=re.I | re.UNICODE,
+                )
+            )
+
+            future_opponent_reference = bool(
+                re.search(
+                    r"(?:will|to|set\s+to|scheduled\s+to|due\s+to)\s+"
+                    r"(?:face|play|meet|take\s+on|host)\b.{0,100}$",
+                    prefix,
+                    flags=re.I | re.UNICODE,
+                )
+            )
+
+            comparison_reference = bool(
+                re.search(
+                    r"\b(?:follow|follows|followed|following|"
+                    r"mirror|mirrors|mirrored|mirroring|"
+                    r"echo|echoes|echoed|echoing|like|"
+                    r"in\s+line\s+with|compared\s+with|"
+                    r"compared\s+to)\b.{0,80}$",
+                    prefix,
+                    flags=re.I | re.UNICODE,
+                )
+            )
+
+            preview_or_absence_reference = bool(
+                re.search(
+                    r"(?:ruled\s+out\s+of|to\s+miss|"
+                    r"miss(?:es|ing)?|withdraw(?:s|n)?\s+from|"
+                    r"ahead\s+of|before)\b.{0,100}$",
+                    prefix,
+                    flags=re.I | re.UNICODE,
+                )
+                and re.search(
+                    r"^\s+(?:test\s+)?(?:series|tour|match|game|"
+                    r"fixture|tournament|cup|championship)\b",
+                    suffix,
+                    flags=re.I | re.UNICODE,
+                )
+            )
+
+            event_scope_reference = bool(
+                re.search(
+                    r"\b(?:for|ahead\s+of|before)\s*$",
+                    prefix,
+                    flags=re.I | re.UNICODE,
+                )
+                and re.search(
+                    r"^\s+(?:test\s+)?(?:series|tour|match|game|"
+                    r"fixture|tournament|cup|championship)\b",
+                    suffix,
+                    flags=re.I | re.UNICODE,
+                )
+            )
+
+            list_reference = bool(
+                re.search(
+                    r"\b(?:including|among|alongside|"
+                    r"contingent\s+of|players?\s+from|"
+                    r"athletes?\s+from|teams?\s+from|"
+                    r"countries?\s+including|"
+                    r"representatives?\s+from)\b.{0,120}$",
+                    prefix,
+                    flags=re.I | re.UNICODE,
+                )
+                or (
+                    re.search(
+                        r"[,;]\s*$",
+                        prefix,
+                    )
+                    and re.search(
+                        r"^\s*[,;]",
+                        suffix,
+                    )
+                )
+            )
+
+            if any(
+                (
+                    source_reference,
+                    venue_reference,
+                    future_opponent_reference,
+                    comparison_reference,
+                    preview_or_absence_reference,
+                    event_scope_reference,
+                    list_reference,
+                )
             ):
-                return False
+                continue
+
+            return False
 
     return found
 
 
+def _country_description_has_primary_ownership(
+    description: str,
+    aliases: set[str],
+) -> bool:
+    """
+    Require a description-only country match to identify an
+    actor, institution or participant belonging to that country.
+    A bare venue, source or opponent mention is insufficient.
+    """
+
+    text = fold(
+        description
+    )[:1200]
+
+    if not text:
+        return False
+
+    if _country_mentions_are_incidental_only(
+        text,
+        aliases,
+    ):
+        return False
+
+    for alias in aliases:
+        clean_alias = fold(
+            alias
+        )
+
+        if not clean_alias:
+            continue
+
+        country_pattern = (
+            r"(?<!\w)"
+            + re.escape(
+                clean_alias
+            )
+            + r"(?!\w)"
+        )
+
+        if re.search(
+            country_pattern
+            + r"(?:['’]s)?(?:\s+[^\W_]+){0,3}\s+"
+            + COUNTRY_OWNERSHIP_SUBJECT_PATTERN
+            + r"\b",
+            text,
+            flags=re.I | re.UNICODE,
+        ):
+            return True
+
+        if re.search(
+            r"\b"
+            + COUNTRY_OWNERSHIP_SUBJECT_PATTERN
+            + r"\b.{0,35}\b(?:for|of|from|representing)\s+"
+            + country_pattern,
+            text,
+            flags=re.I | re.UNICODE,
+        ):
+            return True
+
+        occurrence = re.search(
+            country_pattern,
+            text,
+            flags=re.I | re.UNICODE,
+        )
+
+        if (
+            occurrence
+            and occurrence.start() <= 90
+            and matches(
+                text[:320],
+                CURRENT_EVENT_PATTERNS,
+            )
+        ):
+            return True
+
+    return False
+
+
+def _country_reference_is_secondary_only(
+    title: str,
+    aliases: set[str],
+) -> bool:
+    return _country_mentions_are_incidental_only(
+        title,
+        aliases,
+    )
+
+    
 def country_relevant(
     article: dict,
     country_code: str,
@@ -3134,68 +3357,17 @@ def country_relevant(
     ):
         return False
 
-    def strong_country_sports_evidence(
-        text: str,
-        values: set[str],
-    ) -> bool:
-        # A country or demonym is strong evidence when it is
-        # directly attached to a sporting participant, team,
-        # governing body or domestic competition. A bare venue
-        # phrase such as "tournament in Germany" is weaker.
-        subject = (
-            r"(?:national\s+team|team|club|player|athlete|"
-            r"coach|manager|captain|squad|international|"
-            r"federation|association|league|championship|"
-            r"medallist|medalist|defender|midfielder|striker|"
-            r"goalkeeper|bowler|batter|golfer|swimmer|cyclist|"
-            r"runner|boxer|judoka)"
+    requested_aliases = (
+        base_aliases
+        | sports_aliases
+    )
+
+    requested_description_is_primary = (
+        _country_description_has_primary_ownership(
+            description,
+            requested_aliases,
         )
-
-        for value in values:
-            if not value:
-                continue
-
-            country_pattern = (
-                r"(?<!\w)"
-                + re.escape(value)
-                + r"(?!\w)"
-            )
-
-            # German club, Japan national team, Indian player.
-            if re.search(
-                country_pattern
-                + r"(?:\s+[^\W_]+){0,3}\s+"
-                + subject
-                + r"\b",
-                text,
-                flags=re.I | re.UNICODE,
-            ):
-                return True
-
-            # Player for Germany, captain of India.
-            if re.search(
-                r"\b"
-                + subject
-                + r"\b.{0,25}\b"
-                r"(?:for|of|representing)\s+"
-                + country_pattern,
-                text,
-                flags=re.I | re.UNICODE,
-            ):
-                return True
-
-            # Club/team/league in Germany is domestic evidence,
-            # unlike a generic tournament merely held there.
-            if re.search(
-                r"\b(?:club|team|league|federation|association)"
-                r"\b.{0,25}\bin\s+"
-                + country_pattern,
-                text,
-                flags=re.I | re.UNICODE,
-            ):
-                return True
-
-        return False
+    )
 
     # For ordinary country requests, a headline explicitly
     # centred on another sovereign country must not qualify
@@ -3221,18 +3393,10 @@ def country_relevant(
             other_country_title_aliases,
         )
 
-        strong_requested_description = bool(
-            sports_description_hits
-            or strong_country_sports_evidence(
-                description,
-                base_aliases,
-            )
-        )
-
         if (
             other_country_title_hits
             and not requested_title_hits
-            and not strong_requested_description
+            and not requested_description_is_primary
         ):
             return False
 
@@ -3299,13 +3463,21 @@ def country_relevant(
             other_country_title_aliases,
         )
 
+        gb_sports_description_is_primary = bool(
+            sports_description_hits
+            and not _country_mentions_are_incidental_only(
+                description,
+                sports_aliases,
+            )
+        )
+
         if (
             (
                 other_title_hits
                 or other_country_title_hits
             )
             and not requested_title_hits
-            and not sports_description_hits
+            and not gb_sports_description_is_primary
         ):
             return False
 
@@ -3314,8 +3486,9 @@ def country_relevant(
 
         # A domestic competition or governing-body phrase,
         # such as Premier League or Scottish Rugby, is strong
-        # country evidence in the description.
-        if sports_description_hits:
+        # country evidence only when it is not a venue,
+        # comparison, source or opponent reference.
+        if gb_sports_description_is_primary:
             return True
 
         if other_description_hits:
@@ -3329,19 +3502,10 @@ def country_relevant(
         return base_description_hits >= 2
 
 
-    # Country-scoped news must identify the requested country
-    # in the headline or the provider description.
-    #
-    # A passing mention buried in the article body is not
-    # enough. This prevents an unrelated domestic story from
-    # qualifying merely because the body mentions another
-    # country, tour, venue or opponent.
-    return bool(
-        base_title_hits
-        or base_description_hits
-        or sports_title_hits
-        or sports_description_hits
-    )
+    if requested_title_hits:
+        return True
+
+    return requested_description_is_primary
 
 
 STOPWORDS = {
@@ -4505,13 +4669,6 @@ def _conflicting_entities(
     first: str,
     second: str,
 ) -> bool:
-
-    if _same_person_status_story(
-        first,
-        second,
-    ):
-        return True
-    
     first_entities = _entity_aliases(
         first
     )
@@ -4543,10 +4700,18 @@ def _conflicting_entities(
         and len(second_only) <= 3
     )
 
+
+
 def near_duplicate(
     first: str,
     second: str,
 ) -> bool:
+    if _same_person_status_story(
+        first,
+        second,
+    ):
+        return True
+
     first_entities = _entity_aliases(
         first
     )
@@ -4853,6 +5018,19 @@ def rejection_reason(
         )
     ):
         return "sports_video_game_product"
+
+
+    if (
+        sports_scope(
+            topic,
+            category,
+        )
+        and matches(
+            title,
+            SPORTS_NONCOMPETITIVE_LEGAL_PATTERNS,
+        )
+    ):
+        return "sports_noncompetitive_legal"
 
     if (
         sports_scope(
