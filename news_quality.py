@@ -670,6 +670,54 @@ SPORTS_GAMING_PATTERNS = (
 )
 
 
+SPORTS_VIDEO_GAME_PRODUCT_PATTERNS = (
+    # Video-game releases, features, updates and product
+    # coverage are not competitive sporting developments.
+    #
+    # This is generic and is not tied to any game title,
+    # publisher, country or platform.
+    r"\b(?:video games?|computer games?|console games?|"
+    r"pc games?|mobile games?|roguelites?|roguelikes?|"
+    r"gameplay|dlc|expansion packs?|patch notes?|"
+    r"early access|remasters?|remastered|"
+    r"spinoffs?|spin-offs?|sequels?|"
+    r"game modes?|playable characters?|"
+    r"game features?)\b",
+
+    r"\b(?:playstation|xbox|nintendo|steam|"
+    r"epic games store)\b"
+    r".{0,120}\b"
+    r"(?:game|release|launch|update|patch|"
+    r"expansion|features?)\b",
+
+    # Hindi and Hinglish.
+    r"(?:वीडियो गेम|कंप्यूटर गेम|कंसोल गेम|"
+    r"गेमप्ले|डीएलसी|गेम अपडेट|गेम विस्तार|"
+    r"नया गेम मोड)",
+
+    # German. Text is accent-folded before matching.
+    r"\b(?:videospiel|computerspiel|konsolenspiel|"
+    r"spielerweiterung|spielupdate|spielmodus|"
+    r"neuauflage)\b",
+
+    # French.
+    r"\b(?:jeu video|jeu sur console|extension du jeu|"
+    r"mise a jour du jeu|mode de jeu|remasterisation)\b",
+
+    # Spanish.
+    r"\b(?:videojuego|juego de consola|expansion del juego|"
+    r"actualizacion del juego|modo de juego|remasterizacion)\b",
+)
+
+
+ESPORTS_COMPETITION_PATTERNS = (
+    # Genuine competitive esports remain eligible.
+    r"\b(?:esports?|e-sports?|competitive gaming)\b",
+    r"(?:ईस्पोर्ट्स|ई-स्पोर्ट्स)",
+    r"\b(?:esport|e-sport)\b",
+)
+
+
 SPORTS_REACTION_OR_PERSONALITY_PATTERNS = (
     # Fan reaction, comparisons and social-media chatter are
     # not the underlying sporting development.
@@ -4472,6 +4520,22 @@ def rejection_reason(
         )
     ):
         return "sports_gaming_or_betting"
+
+    if (
+        sports_scope(
+            topic,
+            category,
+        )
+        and matches(
+            title,
+            SPORTS_VIDEO_GAME_PRODUCT_PATTERNS,
+        )
+        and not matches(
+            title,
+            ESPORTS_COMPETITION_PATTERNS,
+        )
+    ):
+        return "sports_video_game_product"
 
     if (
         sports_scope(
