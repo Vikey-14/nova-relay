@@ -284,8 +284,17 @@ EXPLANATORY_NEWS_FORMAT_PATTERNS = (
     r"^\s*who\s+(?:is|are|was|were|does|do|did|"
     r"can|could|should|will|would|has|have)\b",
 
-    r"\?\s+(?:what|why|how|where|when)\b",
+    # Auxiliary-led question articles:
+    #
+    # Can you really swing from spider silk?
+    # Is ice cream really unhealthy?
+    # Could this discovery change medicine?
+    r"^\s*(?:can|could|should|would|"
+    r"is|are|was|were|"
+    r"do|does|did|will|"
+    r"has|have)\b.{0,180}\?",
 
+    r"\?\s+(?:what|why|how|where|when)\b",
     r"\?\s+who\s+(?:is|are|was|were|does|do|did|"
     r"can|could|should|will|would|has|have)\b",
 
@@ -299,11 +308,21 @@ EXPLANATORY_NEWS_FORMAT_PATTERNS = (
     r"(?:^|[|:–—-]\s*)"
     r"(?:जानिए क्यों|यह है वजह|इसलिए हुआ)",
 
+    # German auxiliary-led questions.
+    r"^\s*(?:kann|konnen|konnte|"
+    r"ist|sind|war|waren|"
+    r"soll|sollte|wird|werden|"
+    r"hat|haben)\b.{0,180}\?",
+
     # German. Text is accent-folded before matching.
     r"^\s*(?:was|warum|wie|wer|wann|wo)\b",
 
     r"(?:^|[|:–—-]\s*)"
     r"(?:darum|deshalb|das ist der grund)\b",
+
+    # French auxiliary-led questions.
+    r"^\s*(?:peut|peuvent|pourrait|pourraient|"
+    r"doit|devrait|est|sont)\b.{0,180}\?",
 
     # French.
     r"^\s*(?:qu(?:'|’)est ce que|quoi|"
@@ -311,6 +330,12 @@ EXPLANATORY_NEWS_FORMAT_PATTERNS = (
 
     r"(?:^|[|:–—-]\s*)"
     r"(?:voici pourquoi|ce que cela signifie)\b",
+
+
+    # Spanish auxiliary-led questions.
+    r"^\s*(?:puede|pueden|podria|podrian|"
+    r"debe|deberia|es|son|esta|estan|"
+    r"sera|seran)\b.{0,180}\?",
 
     # Spanish.
     r"^\s*¿?\s*"
@@ -1208,6 +1233,144 @@ CATEGORY_RELEVANCE_PATTERNS = {
         r"concierto)\b",
     ),
 }
+
+
+HEALTH_SPORTS_AVAILABILITY_PATTERNS = (
+    # A player's availability for a match, tour or season is
+    # Sports news even when an injury or medical team is
+    # mentioned in the description.
+    r"\b(?:player|athlete|footballer|cricketer|"
+    r"batter|bowler|speedster|striker|defender|"
+    r"midfielder|goalkeeper|captain|international)\b"
+    r".{0,180}\b"
+    r"(?:(?:likely|set|expected)\s+to\s+miss|"
+    r"to\s+miss|ruled\s+out|unavailable|sidelined|"
+    r"fitness\s+doubt|"
+    r"far\s+away\s+from\s+injury\s+return)\b",
+
+    r"\b(?:(?:likely|set|expected)\s+to\s+miss|"
+    r"to\s+miss|ruled\s+out|unavailable|sidelined|"
+    r"fitness\s+doubt|"
+    r"far\s+away\s+from\s+injury\s+return)\b"
+    r".{0,180}\b"
+    r"(?:match|test|series|tour|game|season|"
+    r"tournament|squad|team)\b",
+
+    # Hindi and Hinglish.
+    r"(?:खिलाड़ी|क्रिकेटर|गेंदबाज|बल्लेबाज)"
+    r".{0,140}"
+    r"(?:चोट के कारण बाहर|सीरीज से बाहर|"
+    r"मैच नहीं खेल|वापसी से दूर)",
+
+    # German.
+    r"\b(?:spieler|athlet|fussballer)\b"
+    r".{0,140}\b"
+    r"(?:fallt aus|verpasst|nicht verfugbar|"
+    r"verletzt|ruckkehr noch weit entfernt)\b",
+
+    # French.
+    r"\b(?:joueur|athlete|footballeur)\b"
+    r".{0,140}\b"
+    r"(?:forfait|manquera|indisponible|blesse|"
+    r"loin d un retour)\b",
+
+    # Spanish.
+    r"\b(?:jugador|atleta|futbolista)\b"
+    r".{0,140}\b"
+    r"(?:baja|se perdera|no estara disponible|"
+    r"lesionado|lejos de regresar)\b",
+)
+
+
+ENTERTAINMENT_CORPORATE_FINANCE_PATTERNS = (
+    # Corporate-finance, securities and regulatory reports
+    # belong to Business even when the company operates in
+    # film, television or music.
+    r"\b(?:shareholders?|capital\s+raise|"
+    r"fundrais(?:e|es|ing)|"
+    r"securities\s+regulator|regulator|"
+    r"stock\s+exchange|"
+    r"bars?\s+(?:the\s+)?company\s+from\s+markets?|"
+    r"shares?|stocks?|earnings|revenue|profit|losses?|"
+    r"debt|bonds?|ipo|merger|acquisition)\b",
+
+    # Hindi.
+    r"(?:शेयरधारक|पूंजी जुटाने|बाजार नियामक|"
+    r"शेयर बाजार|मुनाफा|राजस्व|विलय|अधिग्रहण)",
+
+    # German.
+    r"\b(?:aktionare|kapitalerhohung|borse|aktien|"
+    r"regulierungsbehorde|umsatz|gewinn|fusion|ubernahme)\b",
+
+    # French.
+    r"\b(?:actionnaires|augmentation de capital|bourse|"
+    r"actions|regulateur|chiffre d affaires|benefice|"
+    r"fusion|acquisition)\b",
+
+    # Spanish.
+    r"\b(?:accionistas|ampliacion de capital|bolsa|"
+    r"acciones|regulador|ingresos|beneficio|"
+    r"fusion|adquisicion)\b",
+)
+
+
+ENTERTAINMENT_CREATIVE_PERFORMANCE_PATTERNS = (
+    # Genuine performance reporting remains Entertainment.
+    r"\bbox\s+office\b",
+
+    r"\b(?:film|movie|album|song|series)\b"
+    r".{0,100}\b"
+    r"(?:gross(?:es|ed)?|earns?|sales|streams?|"
+    r"views?|debut(?:s|ed)?)\b",
+
+    r"\b(?:gross(?:es|ed)?|earns?|sales|streams?|"
+    r"views?|debut(?:s|ed)?)\b"
+    r".{0,100}\b"
+    r"(?:film|movie|album|song|series)\b",
+)
+
+
+ENTERTAINMENT_PRIMARY_PATTERNS = (
+    # Creative works, performers and production developments.
+    # The bare word "entertainment" is intentionally excluded:
+    # a company's legal name must not be enough.
+    r"\b(?:film|movie|cinema|television|tv|series|show|"
+    r"music|actor|actress|singer|album|song|director|cast|"
+    r"trailer|premiere|box\s+office|streaming|netflix|"
+    r"bollywood|hollywood|theatre|theater|concert|festival|"
+    r"franchise|sequel)\b",
+
+    # Studio/production announcement wording.
+    r"\b(?:studio|pictures|production)\b"
+    r".{0,120}\b"
+    r"(?:presents?|announces?|unveils?|releases?|"
+    r"casts?|acquires?)\b",
+
+    r"\b(?:presents?|announces?|unveils?|releases?|casts?)\b"
+    r".{0,120}\b"
+    r"(?:film|movie|series|album|song|trailer|"
+    r"production|franchise|sequel)\b",
+
+    # Hindi.
+    r"(?:फिल्म|सिनेमा|टेलीविजन|संगीत|अभिनेता|"
+    r"अभिनेत्री|गायक|एल्बम|गीत|वेब सीरीज|"
+    r"ट्रेलर|निर्देशक|कलाकार|कॉन्सर्ट)",
+
+    # German.
+    r"\b(?:film|kino|fernsehen|musik|schauspieler|"
+    r"sanger|album|serie|regisseur|besetzung|"
+    r"trailer|premiere|streaming|konzert)\b",
+
+    # French.
+    r"\b(?:film|cinema|television|musique|acteur|"
+    r"chanteur|album|serie|realisateur|distribution|"
+    r"bande annonce|premiere|streaming|concert)\b",
+
+    # Spanish.
+    r"\b(?:pelicula|cine|television|musica|actor|"
+    r"cantante|album|serie|director|reparto|"
+    r"trailer|estreno|streaming|concierto)\b",
+)
 
 
 def sports_development_relevant(
@@ -4080,8 +4243,59 @@ def category_relevant(
     ):
         return True
 
-    # Top Headlines can apply a native provider category.
-    # Everything cannot: it is only a keyword search.
+    title = str(
+        article.get("title")
+        or ""
+    )
+
+    description = str(
+        article.get("description")
+        or ""
+    )
+
+    title_and_description = " ".join(
+        (
+            title,
+            description,
+        )
+    )
+
+    # Sports availability and selection stories do not become
+    # Health news merely because an injury, doctor or medical
+    # team is mentioned.
+    if (
+        target == "health"
+        and matches(
+            title,
+            HEALTH_SPORTS_AVAILABILITY_PATTERNS,
+        )
+    ):
+        return False
+
+    # Entertainment means a creative work, performer,
+    # production, release or audience-performance development.
+    #
+    # Corporate finance and securities stories remain Business.
+    if target == "entertainment":
+        if (
+            matches(
+                title,
+                ENTERTAINMENT_CORPORATE_FINANCE_PATTERNS,
+            )
+            and not matches(
+                title,
+                ENTERTAINMENT_CREATIVE_PERFORMANCE_PATTERNS,
+            )
+        ):
+            return False
+
+        return matches(
+            title_and_description,
+            ENTERTAINMENT_PRIMARY_PATTERNS,
+        )
+
+    # A native Top Headlines category is useful evidence after
+    # category-specific hard exclusions have run.
     if provider_category_verified:
         return True
 
@@ -4094,24 +4308,11 @@ def category_relevant(
     if not patterns:
         return True
 
-    title_and_description = " ".join(
-        (
-            str(
-                article.get("title")
-                or ""
-            ),
-
-            str(
-                article.get("description")
-                or ""
-            ),
-        )
-    )
-
     return matches(
         title_and_description,
         patterns,
     )
+
 
 
 def source_name(
