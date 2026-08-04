@@ -813,19 +813,26 @@ SPORTS_COMPETITIVE_SUBJECT_PATTERNS = (
 
 
 SPORTS_COMPETITIVE_DEVELOPMENT_PATTERNS = (
-    # Direct results, personnel decisions, transfers and
-    # other time-bound sporting developments.
+    # Generic time-bound sporting developments. These are
+    # event/action forms, not a list of sports.
     r"\b(?:wins?|won|victory|loses?|lost|loss|"
     r"beat(?:s|en)?|defeat(?:s|ed)?|draws?|scores?|"
-    r"qualif(?:y|ies|ied)|advances?|eliminat(?:e|es|ed)|"
+    r"hits?|homers?|claims?|clinches?|captures?|takes?|"
+    r"edges?|upsets?|qualif(?:y|ies|ied)|advances?|"
+    r"progresses?|reaches?|eliminat(?:e|es|ed)|"
     r"gold|silver|bronze|medals?|podium|record|title|"
     r"champion|clean sweep|signs?|signed|signing|"
-    r"bids?|interest|approach|target|joins?|joined|loan|"
-    r"appoint(?:s|ed)?|named|launch(?:es|ed)?|"
-    r"begins?|starts?|cancel(?:s|led|ed)?|"
-    r"postpon(?:e|es|ed)|injur(?:y|ies|ed)|"
-    r"suspend(?:s|ed)?|ban(?:s|ned)?|retir(?:e|es|ed)|"
-    r"returns?|set for|secures?|breaks?|dies?|death)\b",
+    r"bids?|offers?|interest|approach|target|"
+    r"joins?|joined|loan|appoint(?:s|ed)?|selected|"
+    r"called up|named|launch(?:es|ed)?|begins?|starts?|"
+    r"debuts?|cancel(?:s|led|ed)?|postpon(?:e|es|ed)|"
+    r"injur(?:y|ies|ed)|ruled out|withdraws?|"
+    r"suspend(?:s|ed)?|ban(?:s|ned)?|"
+    r"retir(?:e|es|ed|ement)|returns?|comeback|"
+    r"set for|secures?|breaks?|retains?|defends?|"
+    r"agrees? (?:a )?(?:deal|contract)|"
+    r"extends? (?:his |her |their |the )?contract|"
+    r"traded|drafted|dies?|death)\b",
 
     # Hindi.
     r"(?:जीता|जीती|जीते|हारा|हारी|हराया|स्कोर|"
@@ -921,6 +928,8 @@ SPORTS_COMMERCIAL_PRODUCT_PATTERNS = (
 
 def sports_development_relevant(
     article: dict,
+    *,
+    provider_category_verified: bool = False,
 ) -> bool:
     # Use only the headline and description. Long article
     # bodies often contain unrelated country or sport terms.
@@ -954,9 +963,8 @@ def sports_development_relevant(
         SPORTS_COMPETITIVE_DEVELOPMENT_PATTERNS,
     )
 
-    # An album, single, song, film or concert is entertainment,
-    # not sport, regardless of whether a sporting personality
-    # happens to be mentioned.
+    # Entertainment remains rejected regardless of what
+    # category a provider assigned.
     if matches(
         title,
         SPORTS_ENTERTAINMENT_RELEASE_PATTERNS,
@@ -964,9 +972,7 @@ def sports_development_relevant(
         return False
 
     # A disaster or medical incident qualifies only when the
-    # title itself explicitly connects it to a sporting subject
-    # and reports a concrete effect such as cancellation or
-    # postponement.
+    # headline directly reports its effect on a sporting event.
     if matches(
         title,
         SPORTS_EXTERNAL_INCIDENT_PATTERNS,
@@ -979,6 +985,21 @@ def sports_development_relevant(
             )
         )
 
+    # Top Headlines category=sports is provider-verified.
+    #
+    # Do not require the sport itself to appear in a manually
+    # maintained vocabulary. Require only a genuine current
+    # development. The existing product, opinion, utility,
+    # promotional and country gates still run separately.
+    if provider_category_verified:
+        return bool(
+            title_has_development
+            or description_has_development
+        )
+
+    # Everything has no native category filter, so fallback
+    # candidates must show both a sporting subject and a
+    # genuine current development.
     return bool(
         (
             title_has_subject
@@ -989,7 +1010,6 @@ def sports_development_relevant(
             or description_has_development
         )
     )
-
 
 
 SPORTS_ROLLING_HUB_TITLE_PATTERNS = (
@@ -3895,6 +3915,8 @@ def rejection_reason(
     category: str = "",
     country_code: str = "",
     country_name: str = "",
+    *,
+    provider_category_verified: bool = False,
 ) -> str:
     title = str(
         article.get("title")
@@ -4079,7 +4101,10 @@ def rejection_reason(
             category,
         )
         and not sports_development_relevant(
-            article
+            article,
+            provider_category_verified=(
+                provider_category_verified
+            ),
         )
     ):
         return "not_sporting_development"
@@ -4224,7 +4249,10 @@ def rejection_reason(
                 category,
             )
             and sports_development_relevant(
-                article
+                article,
+                provider_category_verified=(
+                    provider_category_verified
+                ),
             )
         ):
             return ""
@@ -4346,6 +4374,7 @@ def prepare_news_payload(
     country_code: str = "",
     country_name: str = "",
     fresh_days: int = 7,
+    provider_category_verified: bool = False,
 ) -> dict:
     result = dict(
         payload
@@ -4421,8 +4450,11 @@ def prepare_news_payload(
             category,
             country_code,
             country_name,
+            provider_category_verified=(
+                provider_category_verified
+            ),
         )
-        
+
         if reason:
             reject(
                 reason

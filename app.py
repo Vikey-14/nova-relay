@@ -872,16 +872,10 @@ def _prepare_news_payload(
 
 NEWS_EVERYTHING_CATEGORY_QUERIES = {
     "sports": (
-        # Compact, broad sports recall. The quality layer decides
-        # whether each result is a genuine sporting development.
-        #
-        # Keep this expression compact because NewsAPI limits q to
-        # 500 characters and a country expression is appended.
-        "(sport OR sports OR athlete OR tournament OR championship OR "
-        "league OR cup OR match OR race OR medal OR transfer OR signing OR "
-        "coach OR football OR cricket OR rugby OR tennis OR baseball OR "
-        "basketball OR hockey OR golf OR athletics OR motorsport OR sumo OR "
-        "judo OR boxing)"
+        # Generic category wording only. Country-scoped Sports
+        # requests use NewsAPI's native category=sports route,
+        # so no sport names or result verbs are enumerated here.
+        "(sport OR sports OR sporting)"
     ),
 
     "technology": (
@@ -1031,6 +1025,18 @@ def _build_news_everything_query(
             )
         )
 
+    elif (
+        clean_category == "sports"
+        and clean_country
+        and not world_scope
+    ):
+        # Country-scoped Sports fallback:
+        #
+        # Search by country only, then let Nova's strict
+        # Sports classifier inspect the returned articles.
+        # No list of sports is required.
+        subject_expression = ""
+
     elif clean_category:
         subject_expression = (
             NEWS_EVERYTHING_CATEGORY_QUERIES.get(
@@ -1048,12 +1054,27 @@ def _build_news_everything_query(
             or NEWS_WORLD_EVENT_QUERY
         )
 
+
     country_expression = (
         country_query_expression(
             country,
             clean_country,
             topic=clean_topic,
-            category=clean_category,
+
+            # Generic Sports fallback retrieval uses only
+            # country and demonym aliases.
+            #
+            # Domestic sporting aliases may still help the
+            # post-fetch relevance classifier, but they do
+            # not control which sports are retrieved.
+            category=(
+                ""
+                if (
+                    clean_category == "sports"
+                    and not clean_topic
+                )
+                else clean_category
+            ),
         )
     )
 
@@ -1209,19 +1230,40 @@ async def news(
         and category == "sports"
     )
 
+
+    provider_native_sports = bool(
+        mode != "everything"
+        and category == "sports"
+        and not topic
+        and (
+            country_supported
+            or not country
+            or world_scope
+        )
+    )
+
     use_everything = bool(
         mode == "everything"
 
-        # NewsAPI's Top Headlines country parameter
-        # represents the publisher/source market, not
-        # necessarily the country the report concerns.
-        #
-        # Country-scoped requests therefore use Everything
-        # and then pass through strict country relevance.
+        # A specific topic such as football or cricket needs
+        # the flexible Everything query.
         or bool(topic)
-        or country_scope
-        or world_scope
-        or no_search_scope
+
+        # Generic Sports requests use NewsAPI's native Sports
+        # category whenever the provider supports that market.
+        #
+        # Japan: country=jp, category=sports
+        # India: country=in, category=sports
+        # Scotland: country=gb, category=sports, followed by
+        # Nova's exact Scotland relevance filter.
+        or (
+            (
+                country_scope
+                or world_scope
+                or no_search_scope
+            )
+            and not provider_native_sports
+        )
     )
 
     if use_everything:
@@ -1364,6 +1406,7 @@ async def news(
             "invalid news provider payload",
         )
 
+
     payload = prepare_news_payload(
         payload,
         count,
@@ -1372,8 +1415,16 @@ async def news(
         country_code=country,
         country_name=country_name,
         fresh_days=NEWS_FRESH_DAYS,
+
+        # Top Headlines has a real provider-side category
+        # filter. Every sport remains eligible without its
+        # name appearing in Nova's vocabulary.
+        provider_category_verified=bool(
+            endpoint_name == "top-headlines"
+            and category == "sports"
+        ),
     )
-    
+
     payload["nova_endpoint"] = (
         endpoint_name
     )
