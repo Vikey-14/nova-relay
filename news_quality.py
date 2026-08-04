@@ -3056,6 +3056,32 @@ def _country_mentions_are_incidental_only(
                 )
             )
 
+            unsuccessful_alternative_reference = bool(
+                re.search(
+                    r"\b(?:instead\s+of|rather\s+than|"
+                    r"snubs?|snubbed|rejects?|rejected|rejecting|"
+                    r"turns?\s+down|turned\s+down|"
+                    r"opts?\s+against|opted\s+against|"
+                    r"linked\s+(?:with|to)|"
+                    r"amid\s+interest\s+from|"
+                    r"despite\s+interest\s+from|"
+                    r"interest\s+from|wanted\s+by|targeted\s+by|"
+                    r"alternative\s+to)\b.{0,90}$",
+                    prefix,
+                    flags=re.I | re.UNICODE,
+                )
+                or re.search(
+                    r"\b(?:choose|chooses|chose|chosen|"
+                    r"pick|picks|picked|"
+                    r"join|joins|joined|"
+                    r"sign|signs|signed|"
+                    r"move|moves|moved)\b"
+                    r".{0,70}\bover\s*$",
+                    prefix,
+                    flags=re.I | re.UNICODE,
+                )
+            )
+
             preview_or_absence_reference = bool(
                 re.search(
                     r"(?:ruled\s+out\s+of|to\s+miss|"
@@ -3114,6 +3140,7 @@ def _country_mentions_are_incidental_only(
                     venue_reference,
                     future_opponent_reference,
                     comparison_reference,
+                    unsuccessful_alternative_reference,
                     preview_or_absence_reference,
                     event_scope_reference,
                     list_reference,
@@ -4436,6 +4463,61 @@ _DUPLICATE_STATUS_ACTION_RE = re.compile(
 )
 
 
+_DUPLICATE_WITHDRAW_SUPPORT_RE = re.compile(
+    r"\b(?:(?:withdraw(?:s|n|ing)?|withdrew|"
+    r"pull(?:s|ed|ing)?|drop(?:s|ped|ping)?)\b"
+    r".{0,24}\b(?:support|backing|endorsement)\b|"
+    r"(?:no\s+longer|will\s+not|won['’]?t|"
+    r"refuses?|refused)\b"
+    r".{0,18}\b(?:support|back|endorse)\b)",
+    flags=re.I | re.UNICODE,
+)
+
+
+_DUPLICATE_DECISION_NOISE_TOKENS = {
+    "withdraw",
+    "withdraws",
+    "withdrew",
+    "withdrawn",
+    "withdrawing",
+    "pull",
+    "pulls",
+    "pulled",
+    "pulling",
+    "drop",
+    "drops",
+    "dropped",
+    "dropping",
+    "support",
+    "back",
+    "backing",
+    "endorse",
+    "endorsement",
+    "no",
+    "longer",
+    "will",
+    "not",
+    "won",
+    "refuse",
+    "refuses",
+    "refused",
+    "fa",
+    "federation",
+    "association",
+    "club",
+    "team",
+    "government",
+    "committee",
+    "board",
+    "council",
+    "union",
+    "league",
+    "body",
+    "organisation",
+    "organization",
+}
+
+
 def _semantic_duplicate_tokens(
     value: object,
 ) -> list[str]:
@@ -4594,6 +4676,136 @@ def _same_person_status_story(
     )
 
 
+def _decision_actor_anchors(
+    value: object,
+    action_start: int,
+) -> set[str]:
+    text = str(
+        value or ""
+    )
+
+    prefix = text[
+        max(
+            0,
+            action_start - 140,
+        ):
+        action_start
+    ]
+
+    # Keep only the final clause before the decision verb:
+    #
+    #   Infantino bid hit as Wales withdraws support
+    #                         ^^^^^ actor
+    actor_segment = re.split(
+        r"(?:\bas\b|\bafter\b|\bwhile\b|\bbut\b|"
+        r"\bwhereas\b|[:;|–—])",
+        prefix,
+        flags=re.I | re.UNICODE,
+    )[-1]
+
+    anchors = set(
+        _semantic_duplicate_tokens(
+            actor_segment
+        )
+    )
+
+    anchors.update(
+        _entity_aliases(
+            actor_segment
+        )
+    )
+
+    return {
+        token
+        for token in anchors
+        if (
+            token
+            not in _DUPLICATE_DECISION_NOISE_TOKENS
+            and token
+            not in {
+                "officially",
+                "formally",
+                "reportedly",
+                "set",
+                "expected",
+                "plans",
+                "plan",
+            }
+        )
+    }
+
+
+def _same_organisation_decision_story(
+    first: str,
+    second: str,
+) -> bool:
+    first_action = (
+        _DUPLICATE_WITHDRAW_SUPPORT_RE.search(
+            first
+        )
+    )
+
+    second_action = (
+        _DUPLICATE_WITHDRAW_SUPPORT_RE.search(
+            second
+        )
+    )
+
+    if not (
+        first_action
+        and second_action
+    ):
+        return False
+
+    first_actor = _decision_actor_anchors(
+        first,
+        first_action.start(),
+    )
+
+    second_actor = _decision_actor_anchors(
+        second,
+        second_action.start(),
+    )
+
+    # Different organisations making the same decision about
+    # the same target remain separate stories.
+    if not (
+        first_actor
+        & second_actor
+    ):
+        return False
+
+    first_target = {
+        *set(
+            _semantic_duplicate_tokens(
+                first
+            )
+        ),
+        *_entity_aliases(
+            first
+        ),
+    } - first_actor - _DUPLICATE_DECISION_NOISE_TOKENS
+
+    second_target = {
+        *set(
+            _semantic_duplicate_tokens(
+                second
+            )
+        ),
+        *_entity_aliases(
+            second
+        ),
+    } - second_actor - _DUPLICATE_DECISION_NOISE_TOKENS
+
+    # Two shared target anchors distinguish one repeated
+    # decision from separate decisions by the same body.
+    return len(
+        first_target
+        & second_target
+    ) >= 2
+
+
+
 def _named_entities(
     value: object,
 ) -> set[str]:
@@ -4652,6 +4864,22 @@ def _entity_acronyms(
             phrase,
             flags=re.UNICODE,
         )
+
+        # Do not invent acronyms from ordinary two-word
+        # personal names:
+        #
+        # Victor Osimhen -> must not become VO
+        # Zion Suzuki   -> must not become ZS
+        #
+        # Longer organisation-style names and hyphenated
+        # names can still form acronym candidates:
+        #
+        # Paris Saint-Germain -> PSG
+        if (
+            len(words) < 3
+            and "-" not in phrase
+        ):
+            continue
 
         acronym = "".join(
             word[0]
@@ -4730,6 +4958,12 @@ def near_duplicate(
     second: str,
 ) -> bool:
     if _same_person_status_story(
+        first,
+        second,
+    ):
+        return True
+
+    if _same_organisation_decision_story(
         first,
         second,
     ):
