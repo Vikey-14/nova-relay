@@ -22,7 +22,9 @@ NON_NEWS_PATTERNS = (
     #
     # are feature or explanatory articles rather than
     # direct reports of a current development.
-    r"\?\s+(?:what|why|how|who|where|when|"
+    r"\?\s+(?:what|why|how|where|when|"
+    r"who\s+(?:is|are|was|were|does|do|did|"
+    r"can|could|should|will|would|has|have)|"
     r"क्या|क्यों|कैसे|कौन|कब|कहाँ|"
     r"was|warum|wie|wer|wann|wo|"
     r"quoi|pourquoi|comment|qui|quand|ou|"
@@ -43,7 +45,11 @@ NON_NEWS_PATTERNS = (
     #   Why England picked Stephen Fleming
     #   How England selected its new coach
     #   What the appointment means for England
-    r"^\s*(?:what|why|how|who|where|when)\b",
+    r"^\s*(?:what|why|how|where|when)\b",
+
+    r"^\s*who\s+(?:is|are|was|were|does|do|did|"
+    r"can|could|should|will|would|has|have)\b",
+
     r"^\s*(?:should (?:you|i|we)|will your)\b",
 
     r"\bwhat makes\b",
@@ -260,9 +266,15 @@ EXPLANATORY_NEWS_FORMAT_PATTERNS = (
     # contains a genuine cancellation, delay or announcement.
 
     # English.
-    r"^\s*(?:what|why|how|who|where|when)\b",
+    r"^\s*(?:what|why|how|where|when)\b",
 
-    r"\?\s+(?:what|why|how|who|where|when)\b",
+    r"^\s*who\s+(?:is|are|was|were|does|do|did|"
+    r"can|could|should|will|would|has|have)\b",
+
+    r"\?\s+(?:what|why|how|where|when)\b",
+
+    r"\?\s+who\s+(?:is|are|was|were|does|do|did|"
+    r"can|could|should|will|would|has|have)\b",
 
     r"(?:^|[|:–—-]\s*)"
     r"(?:here(?:'|’)s why|here is why|"
@@ -867,7 +879,8 @@ SPORTS_COMPETITIVE_DEVELOPMENT_PATTERNS = (
     # Generic time-bound sporting developments. These are
     # event/action forms, not a list of sports.
     r"\b(?:wins?|won|victory|loses?|lost|loss|"
-    r"beat(?:s|en)?|defeat(?:s|ed)?|draws?|scores?|"
+    r"beat(?:s|en)?|battle(?:s|d)?|"
+    r"defeat(?:s|ed)?|draws?|scores?|"
     r"hits?|homers?|claims?|clinches?|captures?|takes?|"
     r"edges?|upsets?|qualif(?:y|ies|ied)|advances?|"
     r"progresses?|reaches?|eliminat(?:e|es|ed)|"
@@ -880,7 +893,12 @@ SPORTS_COMPETITIVE_DEVELOPMENT_PATTERNS = (
     r"injur(?:y|ies|ed)|ruled out|withdraws?|"
     r"suspend(?:s|ed)?|ban(?:s|ned)?|"
     r"retir(?:e|es|ed|ement)|returns?|comeback|"
-    r"set for|secures?|breaks?|retains?|defends?|"
+    r"set for|near(?:s|ed)?|"
+    r"clos(?:e|es|ed) in on|"
+    r"soar(?:s|ed)?|rise(?:s|rose)?|"
+    r"increase(?:s|d)?|top(?:s|ped)?|"
+    r"surpass(?:es|ed)?|"
+    r"secures?|breaks?|retains?|defends?|"
     r"agrees? (?:a )?(?:deal|contract)|"
     r"extends? (?:his |her |their |the )?contract|"
     r"traded|drafted|dies?|death)\b",
@@ -912,6 +930,11 @@ SPORTS_COMPETITIVE_DEVELOPMENT_PATTERNS = (
 
 
 SPORTS_ENTERTAINMENT_RELEASE_PATTERNS = (
+    # Entertainment personalities are not competitive
+    # sporting developments.
+    r"\b(?:frontman|singer|rapper|musician|recording artist|"
+    r"band|actor|actress|comedian|dj)\b",
+
     # Music, film and entertainment releases are never a
     # competitive sporting development, even when an athlete
     # or club is mentioned in the title.
@@ -975,6 +998,118 @@ SPORTS_COMMERCIAL_PRODUCT_PATTERNS = (
     r"(?:uhr|smartwatch|schuhe|trikot|montre|chaussures|"
     r"maillot|reloj|zapatillas|camiseta|producto)\b",
 )
+
+
+CATEGORY_RELEVANCE_PATTERNS = {
+    "business": (
+        r"\b(?:business|economy|economic|finance|financial|"
+        r"markets?|trade|company|companies|corporate|investment|"
+        r"investors?|stocks?|shares?|earnings|revenue|profit|"
+        r"banking?|merger|acquisition|startup|ipo|inflation|gdp|"
+        r"tax|sales|retail|layoffs?|employment)\b",
+
+        r"(?:व्यापार|अर्थव्यवस्था|वित्त|बाज़ार|बाजार|कंपनी|"
+        r"निवेश|शेयर|बैंक|मुनाफा|राजस्व|महंगाई)",
+
+        r"\b(?:wirtschaft|unternehmen|finanzen|markt|handel|"
+        r"investition|aktien|bank|gewinn|umsatz|inflation)\b",
+
+        r"\b(?:economie|entreprise|finance|marche|commerce|"
+        r"investissement|actions|banque|benefice|revenus|inflation)\b",
+
+        r"\b(?:economia|empresa|finanzas|mercado|comercio|"
+        r"inversion|acciones|banco|beneficio|ingresos|inflacion)\b",
+    ),
+
+    "technology": (
+        r"\b(?:technology|tech|software|cybersecurity|cyberattack|"
+        r"semiconductor|computing|computer|smartphone|"
+        r"artificial intelligence|ai|chip|digital|internet|cloud|"
+        r"data|robotics?|telecom|device|hardware|"
+        r"operating system|app|platform)\b",
+
+        r"(?:तकनीक|प्रौद्योगिकी|सॉफ्टवेयर|साइबर|कंप्यूटर|"
+        r"स्मार्टफोन|कृत्रिम बुद्धिमत्ता|एआई|चिप|रोबोटिक्स)",
+
+        r"\b(?:technologie|software|cybersicherheit|computer|"
+        r"kunstliche intelligenz|chip|digital|robotik|"
+        r"telekommunikation)\b",
+
+        r"\b(?:technologie|logiciel|cybersecurite|ordinateur|"
+        r"intelligence artificielle|puce|numerique|robotique|"
+        r"telecom)\b",
+
+        r"\b(?:tecnologia|software|ciberseguridad|computadora|"
+        r"inteligencia artificial|chip|digital|robotica|"
+        r"telecomunicaciones)\b",
+    ),
+
+    "science": (
+        r"\b(?:science|scientists?|research|researchers?|study|"
+        r"discovery|space|nasa|physics|biology|astronomy|climate|"
+        r"fossil|species|telescope|spacecraft|moon|mars|asteroid|"
+        r"experiment|genome|laboratory|lab|quantum)\b",
+
+        r"(?:विज्ञान|वैज्ञानिक|शोध|अध्ययन|खोज|अंतरिक्ष|"
+        r"भौतिकी|जीवविज्ञान|खगोल|जलवायु|चंद्रमा|मंगल)",
+
+        r"\b(?:wissenschaft|forscher|forschung|studie|entdeckung|"
+        r"weltraum|physik|biologie|astronomie|klima|"
+        r"experiment|quantum)\b",
+
+        r"\b(?:science|scientifique|recherche|etude|decouverte|"
+        r"espace|physique|biologie|astronomie|climat|"
+        r"experience|quantique)\b",
+
+        r"\b(?:ciencia|cientifico|investigacion|estudio|"
+        r"descubrimiento|espacio|fisica|biologia|astronomia|"
+        r"clima|experimento|cuantico)\b",
+    ),
+
+    "health": (
+        r"\b(?:health|medical|medicine|hospital|disease|vaccine|"
+        r"healthcare|doctor|patient|treatment|drug|virus|cancer|"
+        r"infection|outbreak|surgery|mental health|public health|"
+        r"diagnos(?:is|ed)|therapy|clinical|"
+        r"world health organization|fda)\b",
+
+        r"(?:स्वास्थ्य|चिकित्सा|अस्पताल|बीमारी|टीका|डॉक्टर|"
+        r"मरीज|इलाज|दवा|वायरस|कैंसर|संक्रमण|सर्जरी)",
+
+        r"\b(?:gesundheit|medizin|krankenhaus|krankheit|"
+        r"impfstoff|arzt|patient|behandlung|medikament|"
+        r"virus|krebs|infektion)\b",
+
+        r"\b(?:sante|medical|hopital|maladie|vaccin|medecin|"
+        r"patient|traitement|medicament|virus|cancer|infection)\b",
+
+        r"\b(?:salud|medico|hospital|enfermedad|vacuna|doctor|"
+        r"paciente|tratamiento|medicamento|virus|cancer|"
+        r"infeccion)\b",
+    ),
+
+    "entertainment": (
+        r"\b(?:entertainment|film|movie|cinema|television|tv|"
+        r"music|actor|actress|singer|album|song|series|director|"
+        r"box office|streaming|netflix|bollywood|hollywood|"
+        r"theatre|theater|concert|festival)\b",
+
+        r"(?:मनोरंजन|फिल्म|सिनेमा|टेलीविजन|संगीत|अभिनेता|"
+        r"अभिनेत्री|गायक|एल्बम|गीत|वेब सीरीज|कॉन्सर्ट)",
+
+        r"\b(?:unterhaltung|film|kino|fernsehen|musik|"
+        r"schauspieler|sanger|album|serie|regisseur|"
+        r"streaming|konzert)\b",
+
+        r"\b(?:divertissement|film|cinema|television|musique|"
+        r"acteur|chanteur|album|serie|realisateur|"
+        r"streaming|concert)\b",
+
+        r"\b(?:entretenimiento|pelicula|cine|television|musica|"
+        r"actor|cantante|album|serie|director|streaming|"
+        r"concierto)\b",
+    ),
+}
 
 
 def sports_development_relevant(
@@ -2521,6 +2656,104 @@ def country_query_expression(
     )
 
 
+def _country_reference_is_secondary_only(
+    title: str,
+    aliases: set[str],
+) -> bool:
+    """
+    Return True when every requested-country mention is only
+    a comparison, precedent or future-opponent reference.
+
+    Rejected for that country:
+      FA set to follow Welsh FA...
+      Singapore will face Indonesia, Malaysia and India
+
+    Preserved:
+      Wales withdraws support...
+      India beat Australia...
+    """
+
+    text = fold(
+        title
+    )
+
+    found = False
+
+    secondary_prefix_patterns = (
+        # English.
+        r"\b(?:follow|follows|followed|following|"
+        r"mirror|mirrors|mirrored|mirroring|"
+        r"echo|echoes|echoed|echoing)\b.{0,45}$",
+
+        r"\b(?:like|in line with|"
+        r"compared with|compared to)\b.{0,45}$",
+
+        r"\b(?:will|to|set to|scheduled to|due to)\s+"
+        r"(?:face|play|meet)\b.{0,90}$",
+
+        r"\b(?:drawn|grouped)\s+with\b.{0,90}$",
+
+        # Hindi and Hinglish.
+        r"(?:का अनुसरण|की तरह|"
+        r"का सामना करेगा|से भिड़ेगा).{0,70}$",
+
+        # German.
+        r"\b(?:folgt|nach dem vorbild von|"
+        r"trifft auf|spielt gegen)\b.{0,70}$",
+
+        # French.
+        r"\b(?:suit|a l instar de|"
+        r"affrontera|jouera contre)\b.{0,70}$",
+
+        # Spanish.
+        r"\b(?:sigue a|al igual que|"
+        r"se enfrentara a|jugara contra)\b.{0,70}$",
+    )
+
+    for alias in aliases:
+        clean_alias = fold(
+            alias
+        )
+
+        if not clean_alias:
+            continue
+
+        alias_pattern = re.compile(
+            r"(?<!\w)"
+            + re.escape(
+                clean_alias
+            )
+            + r"(?!\w)",
+            flags=re.I | re.UNICODE,
+        )
+
+        for occurrence in alias_pattern.finditer(
+            text
+        ):
+            found = True
+
+            prefix = text[
+                max(
+                    0,
+                    occurrence.start() - 120,
+                ):
+                occurrence.start()
+            ]
+
+            if not any(
+                re.search(
+                    pattern,
+                    prefix,
+                    flags=re.I | re.UNICODE,
+                )
+                for pattern
+                in secondary_prefix_patterns
+            ):
+                return False
+
+    return found
+
+
 def country_relevant(
     article: dict,
     country_code: str,
@@ -2664,6 +2897,18 @@ def country_relevant(
         base_title_hits
         + sports_title_hits
     )
+
+    if (
+        requested_title_hits
+        and _country_reference_is_secondary_only(
+            title,
+            (
+                base_aliases
+                | sports_aliases
+            ),
+        )
+    ):
+        return False
 
     def strong_country_sports_evidence(
         text: str,
@@ -3369,6 +3614,61 @@ def sports_scope(
                 target_topic,
             }
         )
+    )
+
+
+def category_relevant(
+    article: dict,
+    category: str,
+    *,
+    provider_category_verified: bool = False,
+) -> bool:
+    target = fold(
+        category
+    )
+
+    if (
+        not target
+        or target in {
+            "general",
+            "sports",
+            "sport",
+            "खेल",
+        }
+    ):
+        return True
+
+    # Top Headlines can apply a native provider category.
+    # Everything cannot: it is only a keyword search.
+    if provider_category_verified:
+        return True
+
+    patterns = (
+        CATEGORY_RELEVANCE_PATTERNS.get(
+            target
+        )
+    )
+
+    if not patterns:
+        return True
+
+    title_and_description = " ".join(
+        (
+            str(
+                article.get("title")
+                or ""
+            ),
+
+            str(
+                article.get("description")
+                or ""
+            ),
+        )
+    )
+
+    return matches(
+        title_and_description,
+        patterns,
     )
 
 
@@ -4294,6 +4594,15 @@ def rejection_reason(
         )
     ):
         return "not_sporting_development"
+
+    if not category_relevant(
+        article,
+        category,
+        provider_category_verified=(
+            provider_category_verified
+        ),
+    ):
+        return "category_mismatch"
 
     if (
         str(

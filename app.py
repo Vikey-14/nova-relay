@@ -1402,15 +1402,13 @@ async def news(
         or 0
     )
 
-    # The Top Headlines Sports category or the explicit
-    # generic Sports query establishes the Sports scope.
-    # No individual sport must appear in Nova's vocabulary.
-    sports_scope_verified = bool(
-        category == "sports"
-        and (
-            endpoint_name == "top-headlines"
-            or country_sports_scope
-        )
+    # Only NewsAPI's native Top Headlines category filter is
+    # provider-verified. The Everything endpoint is a keyword
+    # search, so its results must still prove that they belong
+    # to the requested sector.
+    category_scope_verified = bool(
+        endpoint_name == "top-headlines"
+        and category
     )
 
     payload = prepare_news_payload(
@@ -1425,7 +1423,7 @@ async def news(
         country_name=country_name,
         fresh_days=NEWS_FRESH_DAYS,
         provider_category_verified=(
-            sports_scope_verified
+            category_scope_verified
         ),
     )
 
@@ -1520,7 +1518,7 @@ async def news(
                 country_name=country_name,
                 fresh_days=NEWS_FRESH_DAYS,
                 provider_category_verified=(
-                    sports_scope_verified
+                    category_scope_verified
                 ),
             )
 
