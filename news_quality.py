@@ -5795,7 +5795,7 @@ def near_duplicate(
         first,
         second,
     ):
-        return True
+        return True``
 
     if _disciplinary_sanctions_conflict(
         first,
