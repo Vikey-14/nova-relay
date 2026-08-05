@@ -4742,6 +4742,177 @@ _DUPLICATE_STATUS_ACTION_RE = re.compile(
 )
 
 
+_DUPLICATE_DISCIPLINARY_ACTION_RE = re.compile(
+    r"\b(?:ban(?:s|ned|ning)?|suspend(?:s|ed|ing)?|"
+    r"bar(?:s|red|ring)?|disqualif(?:y|ies|ied|ication)|"
+    r"ineligible|प्रतिबंध|निलंबित|"
+    r"gesperrt|suspendiert|"
+    r"interdit|suspendu|"
+    r"sancionado|suspendido)\b",
+    flags=re.I | re.UNICODE,
+)
+
+
+_DUPLICATE_DISCIPLINARY_DURATION_RE = re.compile(
+    r"\b(?P<count>"
+    r"\d+|one|two|three|four|five|six|seven|eight|nine|ten|"
+    r"eleven|twelve|thirteen|fourteen|fifteen|sixteen|"
+    r"seventeen|eighteen|nineteen|twenty"
+    r")\s*[- ]?\s*"
+    r"(?P<unit>years?|months?|matches?|games?|seasons?|"
+    r"साल|वर्ष|महीने?|मैच|"
+    r"jahre?|monate?|spiele?|"
+    r"ans?|mois|matchs?|"
+    r"anos?|meses?|partidos?)\b",
+    flags=re.I | re.UNICODE,
+)
+
+
+_DUPLICATE_DISCIPLINARY_NUMBER_WORDS = {
+    "one": "1",
+    "two": "2",
+    "three": "3",
+    "four": "4",
+    "five": "5",
+    "six": "6",
+    "seven": "7",
+    "eight": "8",
+    "nine": "9",
+    "ten": "10",
+    "eleven": "11",
+    "twelve": "12",
+    "thirteen": "13",
+    "fourteen": "14",
+    "fifteen": "15",
+    "sixteen": "16",
+    "seventeen": "17",
+    "eighteen": "18",
+    "nineteen": "19",
+    "twenty": "20",
+}
+
+
+_DUPLICATE_DISCIPLINARY_OFFENSE_PATTERNS = (
+    (
+        "integrity",
+        r"\b(?:anti[- ]?corruption|corruption code|"
+        r"match[- ]?fixing|spot[- ]?fixing|"
+        r"betting (?:breach|offence|offense|violation)|"
+        r"integrity (?:code|breach|violation))\b",
+    ),
+
+    (
+        "doping",
+        r"\b(?:doping|anti[- ]?doping|"
+        r"prohibited substance|drug test)\b",
+    ),
+
+    (
+        "misconduct",
+        r"\b(?:misconduct|harassment|assault|abuse|"
+        r"disciplinary breach)\b",
+    ),
+)
+
+
+_DUPLICATE_DISCIPLINARY_SPORT_PATTERNS = (
+    (
+        "cricket",
+        r"\b(?:cricket|cricketer|cricketers|icc|ipl|"
+        r"batter|bowler|t20i?|odi)\b",
+    ),
+
+    (
+        "football",
+        r"\b(?:football|footballer|soccer|fifa|uefa|"
+        r"premier league|champions league)\b",
+    ),
+
+    (
+        "tennis",
+        r"\b(?:tennis|atp|wta)\b",
+    ),
+
+    (
+        "basketball",
+        r"\b(?:basketball|nba|wnba)\b",
+    ),
+
+    (
+        "hockey",
+        r"\b(?:hockey|nhl|fih)\b",
+    ),
+
+    (
+        "motorsport",
+        r"\b(?:formula 1|formula one|f1|motogp|"
+        r"nascar|indycar|rally)\b",
+    ),
+
+    (
+        "baseball",
+        r"\b(?:baseball|mlb)\b",
+    ),
+
+    (
+        "rugby",
+        r"\b(?:rugby|six nations)\b",
+    ),
+
+    (
+        "golf",
+        r"\b(?:golf|pga|lpga)\b",
+    ),
+
+    (
+        "combat",
+        r"\b(?:boxing|mma|ufc|wrestling|judo)\b",
+    ),
+
+    (
+        "athletics",
+        r"\b(?:athletics|track and field|marathon)\b",
+    ),
+)
+
+
+_DUPLICATE_DISCIPLINARY_ROLE_RE = re.compile(
+    r"^\s+(?:national\s+)?(?:cricket\s+player|cricketer|"
+    r"football\s+player|footballer|soccer\s+player|"
+    r"player|athlete|batter|bowler|pitcher|golfer|"
+    r"boxer|wrestler|judoka|runner|driver|cyclist)\b",
+    flags=re.I | re.UNICODE,
+)
+
+
+_DUPLICATE_DISCIPLINARY_ENTITY_NOISE = {
+    "anti",
+    "corruption",
+    "anti-corruption",
+    "code",
+    "match",
+    "fixing",
+    "match-fixing",
+    "spot-fixing",
+    "integrity",
+    "doping",
+    "ban",
+    "banned",
+    "suspend",
+    "suspended",
+    "suspension",
+    "year",
+    "years",
+    "month",
+    "months",
+    "game",
+    "games",
+    "season",
+    "seasons",
+    "official",
+}
+
+
 _DUPLICATE_WITHDRAW_SUPPORT_RE = re.compile(
     r"\b(?:(?:withdraw(?:s|n|ing)?|withdrew|"
     r"pull(?:s|ed|ing)?|drop(?:s|ped|ping)?)\b"
@@ -4952,6 +5123,390 @@ def _same_person_status_story(
     return bool(
         first_anchors
         & second_anchors
+    )
+
+
+def _disciplinary_duration_signature(
+    value: object,
+) -> tuple[str, str] | None:
+    match = (
+        _DUPLICATE_DISCIPLINARY_DURATION_RE.search(
+            fold(
+                value
+            )
+        )
+    )
+
+    if not match:
+        return None
+
+    count = str(
+        match.group(
+            "count"
+        )
+        or ""
+    ).casefold()
+
+    count = (
+        _DUPLICATE_DISCIPLINARY_NUMBER_WORDS.get(
+            count,
+            count,
+        )
+    )
+
+    unit = str(
+        match.group(
+            "unit"
+        )
+        or ""
+    ).casefold()
+
+    if unit.endswith(
+        "s"
+    ):
+        unit = unit[:-1]
+
+    return (
+        count,
+        unit,
+    )
+
+
+def _disciplinary_offense_family(
+    value: object,
+) -> str:
+    text = fold(
+        value
+    )
+
+    for family, pattern in (
+        _DUPLICATE_DISCIPLINARY_OFFENSE_PATTERNS
+    ):
+        if _compiled_regex(
+            pattern
+        ).search(
+            text
+        ):
+            return family
+
+    return ""
+
+
+def _disciplinary_sport_families(
+    value: object,
+) -> set[str]:
+    text = fold(
+        value
+    )
+
+    return {
+        family
+        for family, pattern in (
+            _DUPLICATE_DISCIPLINARY_SPORT_PATTERNS
+        )
+        if _compiled_regex(
+            pattern
+        ).search(
+            text
+        )
+    }
+
+
+def _disciplinary_named_subjects(
+    value: object,
+) -> set[str]:
+    text = str(
+        value or ""
+    )
+
+    subjects: set[str] = set()
+
+    for occurrence in re.finditer(
+        r"(?<!\w)"
+        r"(?:[A-Z][\w'’.-]{2,}"
+        r"(?:\s+[A-Z][\w'’.-]{2,}){0,2}|"
+        r"[A-Z]{2,})"
+        r"(?!\w)",
+        text,
+        flags=re.UNICODE,
+    ):
+        candidate = fold(
+            occurrence.group(
+                0
+            )
+        )
+
+        candidate_words = set(
+            re.findall(
+                r"[^\W_]+",
+                candidate,
+                flags=re.UNICODE,
+            )
+        )
+
+        if (
+            not candidate_words
+            or candidate_words
+            & _DUPLICATE_DISCIPLINARY_ENTITY_NOISE
+        ):
+            continue
+
+        # These describe the player and are not names:
+        #
+        # American cricket player
+        # USA cricketer
+        # US cricket player
+        if _DUPLICATE_DISCIPLINARY_ROLE_RE.search(
+            text[
+                occurrence.end():
+                occurrence.end() + 60
+            ]
+        ):
+            continue
+
+        subjects.add(
+            candidate
+        )
+
+    return subjects
+
+
+def _same_disciplinary_sanction_story(
+    first: str,
+    second: str,
+) -> bool:
+    if not (
+        _DUPLICATE_DISCIPLINARY_ACTION_RE.search(
+            first
+        )
+        and _DUPLICATE_DISCIPLINARY_ACTION_RE.search(
+            second
+        )
+    ):
+        return False
+
+    first_duration = (
+        _disciplinary_duration_signature(
+            first
+        )
+    )
+
+    second_duration = (
+        _disciplinary_duration_signature(
+            second
+        )
+    )
+
+    if (
+        first_duration
+        and second_duration
+        and first_duration
+        != second_duration
+    ):
+        return False
+
+    first_offense = (
+        _disciplinary_offense_family(
+            first
+        )
+    )
+
+    second_offense = (
+        _disciplinary_offense_family(
+            second
+        )
+    )
+
+    if (
+        first_offense
+        and second_offense
+        and first_offense
+        != second_offense
+    ):
+        return False
+
+    first_sports = (
+        _disciplinary_sport_families(
+            first
+        )
+    )
+
+    second_sports = (
+        _disciplinary_sport_families(
+            second
+        )
+    )
+
+    if (
+        first_sports
+        and second_sports
+        and not (
+            first_sports
+            & second_sports
+        )
+    ):
+        return False
+
+    first_subjects = (
+        _disciplinary_named_subjects(
+            first
+        )
+    )
+
+    second_subjects = (
+        _disciplinary_named_subjects(
+            second
+        )
+    )
+
+    # Named reports about two different people must remain
+    # separate even when their punishment is identical.
+    if (
+        first_subjects
+        and second_subjects
+        and not (
+            first_subjects
+            & second_subjects
+        )
+    ):
+        return False
+
+    shared_subject = bool(
+        first_subjects
+        & second_subjects
+    )
+
+    same_duration = bool(
+        first_duration
+        and first_duration
+        == second_duration
+    )
+
+    same_offense = bool(
+        first_offense
+        and first_offense
+        == second_offense
+    )
+
+    same_sport = bool(
+        first_sports
+        & second_sports
+    )
+
+    # Named versions may omit the duration or exact offence.
+    if (
+        shared_subject
+        and (
+            same_duration
+            or same_offense
+        )
+    ):
+        return True
+
+    # Anonymous and named versions of the same report collapse
+    # when punishment length, offence family and sport agree.
+    return bool(
+        same_duration
+        and same_offense
+        and same_sport
+    )
+
+
+def _disciplinary_sanctions_conflict(
+    first: str,
+    second: str,
+) -> bool:
+    if not (
+        _DUPLICATE_DISCIPLINARY_ACTION_RE.search(
+            first
+        )
+        and _DUPLICATE_DISCIPLINARY_ACTION_RE.search(
+            second
+        )
+    ):
+        return False
+
+    first_duration = (
+        _disciplinary_duration_signature(
+            first
+        )
+    )
+
+    second_duration = (
+        _disciplinary_duration_signature(
+            second
+        )
+    )
+
+    if (
+        first_duration
+        and second_duration
+        and first_duration
+        != second_duration
+    ):
+        return True
+
+    first_offense = (
+        _disciplinary_offense_family(
+            first
+        )
+    )
+
+    second_offense = (
+        _disciplinary_offense_family(
+            second
+        )
+    )
+
+    if (
+        first_offense
+        and second_offense
+        and first_offense
+        != second_offense
+    ):
+        return True
+
+    first_sports = (
+        _disciplinary_sport_families(
+            first
+        )
+    )
+
+    second_sports = (
+        _disciplinary_sport_families(
+            second
+        )
+    )
+
+    if (
+        first_sports
+        and second_sports
+        and not (
+            first_sports
+            & second_sports
+        )
+    ):
+        return True
+
+    first_subjects = (
+        _disciplinary_named_subjects(
+            first
+        )
+    )
+
+    second_subjects = (
+        _disciplinary_named_subjects(
+            second
+        )
+    )
+
+    return bool(
+        first_subjects
+        and second_subjects
+        and not (
+            first_subjects
+            & second_subjects
+        )
     )
 
 
@@ -5236,6 +5791,18 @@ def near_duplicate(
     first: str,
     second: str,
 ) -> bool:
+    if _same_disciplinary_sanction_story(
+        first,
+        second,
+    ):
+        return True
+
+    if _disciplinary_sanctions_conflict(
+        first,
+        second,
+    ):
+        return False
+
     if _same_person_status_story(
         first,
         second,
