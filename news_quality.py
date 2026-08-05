@@ -3471,6 +3471,41 @@ def _country_reference_is_secondary_only(
     )
 
     
+COUNTRY_TITLE_ACRONYM_PATTERNS = {
+    # These checks must remain case-sensitive.
+    #
+    # Folding "US" into "us" would confuse the country
+    # abbreviation with the ordinary English pronoun.
+    "us": (
+        r"(?<!\w)U\.?\s*S\.?(?!\w)",
+    ),
+
+    "gb": (
+        r"(?<!\w)U\.?\s*K\.?(?!\w)",
+    ),
+}
+
+
+def _other_country_title_acronym_hits(
+    raw_title: str,
+    requested_code: str,
+) -> int:
+    return sum(
+        len(
+            re.findall(
+                pattern,
+                raw_title,
+                flags=re.UNICODE,
+            )
+        )
+        for code, patterns in (
+            COUNTRY_TITLE_ACRONYM_PATTERNS.items()
+        )
+        if code != requested_code
+        for pattern in patterns
+    )
+
+
 def country_relevant(
     article: dict,
     country_code: str,
@@ -3513,9 +3548,13 @@ def country_relevant(
     ):
         return True
 
-    title = fold(
+    raw_title = str(
         article.get("title")
         or ""
+    )
+
+    title = fold(
+        raw_title
     )
 
     description = fold(
@@ -3660,15 +3699,24 @@ def country_relevant(
             if fold(alias)
         }
 
-        other_country_title_hits = mention_count(
-            title,
-            other_country_title_aliases,
+        other_country_title_hits = (
+            mention_count(
+                title,
+                other_country_title_aliases,
+            )
+            + _other_country_title_acronym_hits(
+                raw_title,
+                requested_code,
+            )
         )
 
         if (
             other_country_title_hits
             and not requested_title_hits
-            and not requested_description_is_primary
+            and (
+                not sports_request
+                or not requested_description_is_primary
+            )
         ):
             return False
 
