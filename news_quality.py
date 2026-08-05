@@ -893,6 +893,19 @@ SPORTS_ANALYSIS_FEATURE_PATTERNS = (
 
     r"\b(?:rewrote|changed)\s+(?:the\s+)?rules\b",
 
+    # Forward-looking campaign assessments and tournament
+    # wrap-ups are analysis, not one direct sporting event.
+    r"\b(?:all eyes on|looking ahead|road ahead|what next)\b",
+
+    r"\b(?:campaign|season|tournament)\b"
+    r".{0,140}\b"
+    r"(?:offers?|shows?|reveals?)\b"
+    r".{0,100}\b"
+    r"(?:promise|warning signs?|lessons?|concerns?)\b",
+
+    r"\b(?:promise and warning signs?|"
+    r"both promise and warning signs?)\b",
+
     # Hindi and Hinglish equivalents.
     r"(?:भविष्यवाणी|अनुमान|संभावित टीम|दूर का सपना|"
     r"याद किया|याद करते|पछतावा)",
@@ -1233,6 +1246,40 @@ CATEGORY_RELEVANCE_PATTERNS = {
         r"concierto)\b",
     ),
 }
+
+
+
+TECHNOLOGY_FINANCIAL_MARKET_PATTERNS = (
+    # Stock-index and share-price reports belong to Business,
+    # even when chip or technology companies drove the move.
+    r"\b(?:nikkei|sensex|nifty|nasdaq|dow|"
+    r"s&p\s*500|stock\s+index|shares?|stocks?|"
+    r"equities|markets?)\b"
+    r".{0,140}\b"
+    r"(?:rises?|rose|gains?|gained|climbs?|climbed|"
+    r"falls?|fell|drops?|dropped|slides?|slid|"
+    r"led\s+by|higher|lower)\b",
+
+    r"\b(?:rises?|rose|gains?|gained|climbs?|climbed|"
+    r"falls?|fell|drops?|dropped|slides?|slid|"
+    r"led\s+by|higher|lower)\b"
+    r".{0,140}\b"
+    r"(?:nikkei|sensex|nifty|nasdaq|dow|"
+    r"s&p\s*500|stock\s+index|shares?|stocks?|"
+    r"equities|markets?)\b",
+
+    # Hindi.
+    r"(?:निफ्टी|सेंसेक्स|शेयर|शेयर बाजार|सूचकांक)"
+    r".{0,100}"
+    r"(?:बढ़ा|गिरा|चढ़ा|फिसला)",
+
+    # German, French and Spanish. Text is accent-folded.
+    r"\b(?:aktien|borse|index|marches?|actions|"
+    r"bolsa|acciones|indice)\b"
+    r".{0,120}\b"
+    r"(?:steigt|fallt|hausse|baisse|sube|cae)\b",
+)
+
 
 
 HEALTH_SPORTS_AVAILABILITY_PATTERNS = (
@@ -4259,6 +4306,17 @@ def category_relevant(
             description,
         )
     )
+
+    # Stock-market movement is Business news, not a Technology
+    # development merely because chip stocks led the index.
+    if (
+        target == "technology"
+        and matches(
+            title,
+            TECHNOLOGY_FINANCIAL_MARKET_PATTERNS,
+        )
+    ):
+        return False
 
     # Sports availability and selection stories do not become
     # Health news merely because an injury, doctor or medical
