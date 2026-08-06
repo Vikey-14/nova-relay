@@ -641,6 +641,92 @@ TOPIC_QUERY_EXPANSIONS = {
 
 
 
+SPACE_TOPIC_QUERY_EXPRESSION = (
+    '("outer space" OR "space mission" OR "space programme" OR '
+    '"space program" OR "space agency" OR spacecraft OR satellite OR '
+    'rocket OR orbit OR orbital OR lunar OR astronaut OR astronomy OR '
+    'telescope OR NASA OR ISRO OR JAXA OR SpaceX OR "Blue Origin" OR '
+    '"European Space Agency" OR Raumfahrt OR Weltraum OR '
+    '"exploration spatiale" OR "mission spatiale" OR '
+    '"exploracion espacial" OR "mision espacial" OR अंतरिक्ष)'
+)
+
+
+SPACE_TOPIC_STRONG_PATTERNS = (
+    # Agencies and companies whose reporting is inherently
+    # about spaceflight, astronomy or orbital activity.
+    r"\b(?:nasa|isro|jaxa|roscosmos|spacex|blue origin|"
+    r"european space agency)\b",
+
+    # Missions, vehicles, launches and orbital operations.
+    r"\b(?:spacecraft|satellites?|rockets?|launch vehicles?|"
+    r"spaceflight|space station|space missions?|"
+    r"moon missions?|mars missions?|lunar missions?|"
+    r"orbit(?:s|al|ing|ed)?|re-entry|reentry|"
+    r"astronauts?|cosmonauts?)\b",
+
+    # Astronomy and planetary-science developments.
+    r"\b(?:astronomy|astronomers?|telescopes?|"
+    r"asteroids?|comets?|exoplanets?|lunar)\b",
+
+    r"\b(?:moon|mars)\s+(?:mission|missions|lander|landers|"
+    r"rover|rovers|orbit|orbiter|surface|research|sample)\b",
+
+    # Policy, industry and research phrases where "space"
+    # has its literal aerospace meaning.
+    r"\bspace\s+(?:agency|agencies|programme|program|"
+    r"mission|missions|sector|industry|policy|economy|"
+    r"research|science|technology|exploration|flight|"
+    r"station|launch|launches)\b",
+
+    r"\b(?:commercial|civil|military|private|national)\s+"
+    r"space\b",
+
+    # Hindi.
+    r"(?:अंतरिक्ष|चंद्र मिशन|मंगल मिशन|उपग्रह|रॉकेट)",
+
+    # German.
+    r"\b(?:weltraum|raumfahrt|satellit|rakete|astronomie)\b",
+
+    # French.
+    r"\b(?:exploration spatiale|mission spatiale|"
+    r"satellite|fusee|astronomie)\b",
+
+    # Spanish.
+    r"\b(?:exploracion espacial|mision espacial|"
+    r"satelite|cohete|astronomia)\b",
+)
+
+
+SPACE_TOPIC_WRONG_SENSE_PATTERNS = (
+    # Commercial or abstract meanings of "space".
+    r"\b(?:food delivery|fintech|payments?|retail|"
+    r"e-?commerce|startup|business|consumer|digital|"
+    r"advertising|media|fashion|beauty|gaming|travel|"
+    r"mobility|insurance|healthcare|education|edtech)\s+space\b",
+
+    r"\b(?:office|parking|storage|living|retail|floor|"
+    r"advertising|workspace|coworking)\s+space\b",
+
+    # A satellite office/campus is not an orbital satellite.
+    r"\bsatellite\s+(?:office|campus|branch|town|city|channel)\b",
+)
+
+
+SPACE_TOPIC_OMNIBUS_SPEECH_PATTERNS = (
+    # A political or corporate speech that merely lists space
+    # alongside AI, semiconductors or deep tech is not one
+    # concrete Space development.
+    r"\b(?:ai|artificial intelligence|semiconductors?|"
+    r"deep tech)\b.{0,140}\bspace\b.{0,140}\b"
+    r"(?:says?|said|pm|prime minister|minister|president)\b",
+
+    r"\bspace\b.{0,140}\b(?:ai|artificial intelligence|"
+    r"semiconductors?|deep tech)\b.{0,140}\b"
+    r"(?:says?|said|pm|prime minister|minister|president)\b",
+)
+
+
 SPORTS_SCOPE_ALIASES = {
     "sports",
     "sport",
@@ -4027,6 +4113,19 @@ def topic_query_expression(
     if not canonical:
         return ""
 
+    # The bare word "space" is highly ambiguous:
+    #
+    #   food-delivery space
+    #   fintech space
+    #   advertising space
+    #
+    # Ask the provider for concrete aerospace and astronomy
+    # signals instead of searching the bare word by itself.
+    if fold(
+        canonical
+    ) == "space":
+        return SPACE_TOPIC_QUERY_EXPRESSION
+
     equivalent_values = list(
         _topic_equivalents(
             canonical
@@ -4193,31 +4292,77 @@ def topic_aliases(
 
     return aliases
 
-
 def topic_relevant(
     article: dict,
     topic: str,
 ) -> bool:
-    target = fold(topic)
+    canonical = canonical_topic(
+        topic
+    )
+
+    target = fold(
+        canonical
+    )
 
     if not target:
         return True
 
+    title = str(
+        article.get("title")
+        or ""
+    )
+
+    description = str(
+        article.get("description")
+        or ""
+    )
+
+    content = str(
+        article.get("content")
+        or ""
+    )[:600]
+
+    # "Space" must mean aerospace, astronomy or orbital
+    # activity. A bare word match is not enough because
+    # publishers also use "space" to mean a business sector.
+    if target == "space":
+        if matches(
+            title,
+            SPACE_TOPIC_WRONG_SENSE_PATTERNS,
+        ):
+            return False
+
+        if matches(
+            title,
+            SPACE_TOPIC_OMNIBUS_SPEECH_PATTERNS,
+        ):
+            return False
+
+        if matches(
+            title,
+            SPACE_TOPIC_STRONG_PATTERNS,
+        ):
+            return True
+
+        # A title may omit the explicit agency or spacecraft
+        # name, so permit strong supporting evidence from the
+        # provider description or content.
+        return matches(
+            " ".join(
+                (
+                    description,
+                    content,
+                )
+            ),
+            SPACE_TOPIC_STRONG_PATTERNS,
+        )
+
     combined = fold(
         " ".join(
             (
-                str(
-                    article.get("title")
-                    or ""
-                ),
-                str(
-                    article.get("description")
-                    or ""
-                ),
-                str(
-                    article.get("content")
-                    or ""
-                )[:600],
+                title,
+                description,
+                content,
             )
         )
     )
@@ -4228,17 +4373,21 @@ def topic_relevant(
             combined,
         )
         for alias in topic_aliases(
-            topic
+            canonical
         )
     ):
         return True
 
     topic_words = [
         word
-        for word in words(target)
+        for word in words(
+            target
+        )
         if (
             word not in STOPWORDS
-            and len(word) >= 3
+            and len(
+                word
+            ) >= 3
         )
     ]
 
@@ -4257,29 +4406,37 @@ def topic_relevant(
             continue
 
         if (
-            len(token) >= 6
+            len(
+                token
+            ) >= 6
             and any(
                 item.startswith(
                     token[:5]
                 )
                 for item in combined_words
-                if len(item) >= 5
+                if len(
+                    item
+                ) >= 5
             )
         ):
             matched += 1
 
     required = (
         1
-        if len(topic_words) == 1
+        if len(
+            topic_words
+        ) == 1
         else min(
             2,
-            len(topic_words),
+            len(
+                topic_words
+            ),
         )
     )
 
     return matched >= required
 
-
+    
 def sports_scope(
     topic: str,
     category: str,
