@@ -1120,7 +1120,7 @@ def _build_news_everything_query(
 @app.get("/news")
 async def news(
     topic: str = "",
-    country: str = "in",
+    country: str = "",
     country_name: str = "",
     category: str = "",
     lang: str = "en",
@@ -1144,6 +1144,11 @@ async def news(
     country_name = str(
         country_name or ""
     ).strip()
+
+    # Direct relay calls with no country are worldwide.
+    # A supplied country is never overwritten.
+    if not country and not country_name:
+        country_name = "World"
 
     category = str(
         category or ""
