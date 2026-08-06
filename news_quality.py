@@ -4292,6 +4292,7 @@ def topic_aliases(
 
     return aliases
 
+
 def topic_relevant(
     article: dict,
     topic: str,
@@ -4322,6 +4323,7 @@ def topic_relevant(
         or ""
     )[:600]
 
+
     # "Space" must mean aerospace, astronomy or orbital
     # activity. A bare word match is not enough because
     # publishers also use "space" to mean a business sector.
@@ -4338,22 +4340,17 @@ def topic_relevant(
         ):
             return False
 
-        if matches(
-            title,
-            SPACE_TOPIC_STRONG_PATTERNS,
-        ):
-            return True
-
-        # A title may omit the explicit agency or spacecraft
-        # name, so permit strong supporting evidence from the
-        # provider description or content.
+        # Space ownership must be visible in the headline.
+        #
+        # Do not rescue an unrelated RBI, inflation, market or
+        # other cross-domain title merely because NewsAPI's
+        # description/content snippet happens to mention a
+        # satellite, launch, orbit or another Space term.
+        #
+        # Nova deliberately prefers one clean Space headline
+        # over padding the answer with unrelated stories.
         return matches(
-            " ".join(
-                (
-                    description,
-                    content,
-                )
-            ),
+            title,
             SPACE_TOPIC_STRONG_PATTERNS,
         )
 
