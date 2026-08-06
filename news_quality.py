@@ -179,6 +179,21 @@ NON_NEWS_PATTERNS = (
     r"sale of up to \d+%|"
     r"discount of up to \d+%)\b",
 
+    # Rolling live pages are coverage utilities, not one
+    # self-contained headline development.
+    r"^\s*live\s*[:|–—-]\s*",
+
+    # Consumer-plan offers and code-based deal posts are
+    # promotions, not Technology developments.
+    r"\b(?:mobile|wireless|internet|phone|data)\b"
+    r".{0,120}\bplans?\b"
+    r".{0,180}\b(?:tax included|billed monthly|with code|"
+    r"discounted prices?|promotional|deal|offer)\b",
+
+    r"\b(?:plans?|deal|offer)\b"
+    r".{0,160}\b(?:with code|discounted prices?|"
+    r"billed monthly|tax included)\b",
+
     # Bare domains and homepage titles.
     r"^\s*(?:www\.)?"
     r"[a-z0-9-]+"
@@ -943,10 +958,27 @@ SPORTS_ANALYSIS_FEATURE_PATTERNS = (
     r"(?:roster|lineup|squad|selection|winner|champion|"
     r"outcome|season|tournament|world cup|qualification)\b",
 
+    
     # Outlook pieces that discuss whether success may happen
     # someday instead of reporting a new result or decision.
     r"\b(?:distant dream|long shot|far from reality|"
     r"years? away|still a dream|road to qualification)\b",
+
+    # Forward-looking ambition and bragging-rights features
+    # are previews/commentary, not completed developments.
+    r"\beyes?\b.{0,120}\b"
+    r"(?:world cup|title|trophy|championship|win|victory|"
+    r"bragging rights?)\b",
+
+    r"\bbragging rights?\b",
+
+    # Forward-looking ambition and bragging-rights features
+    # are previews/commentary, not completed developments.
+    r"\beyes?\b.{0,120}\b"
+    r"(?:world cup|title|trophy|championship|win|victory|"
+    r"bragging rights?)\b",
+
+    r"\bbragging rights?\b",
 
     # Retrospective memory and regret pieces about old events.
     r"\b(?:recalls?|remembers?|reminisces?|reflects? on|"
