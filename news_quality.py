@@ -1026,7 +1026,14 @@ SPORTS_QUOTE_COMMENTARY_PATTERNS = (
     r"(?:must improve|need(?:s)? to improve|should improve|"
     r"can win|will win|to win|title challenge|"
     r"favourites?|favorites?)\b",
+
+    # Pundit/player explanations such as "reveals why X is
+    # the best" are commentary, not a fresh sporting event.
+    r"\b(?:reveals?|explains?|shares?|says?)\s+"
+    r"(?:why|how)\b",
 )
+
+
 
 
 SPORTS_NONCOMPETITIVE_LEGAL_PATTERNS = (
@@ -1172,6 +1179,25 @@ SPORTS_ENTERTAINMENT_RELEASE_PATTERNS = (
 )
 
 
+SPORTS_NAME_LOOKALIKE_MEMORIAL_RE = re.compile(
+    # A stage name or surname that happens to be a sport word
+    # must not turn an entertainment obituary into Sports news.
+    #
+    # Example: Tributes paid to Jimmy Cricket
+    r"\b(?:tributes?\s+(?:are\s+)?paid\s+to|"
+    r"pays?\s+tribute\s+to|remembering)\s+"
+    r"(?:[A-Z][\w'’.-]+\s+){1,2}"
+    r"(?:Cricket|Football|Tennis|Golf|Rugby|Hockey|Boxing)\b",
+    flags=re.UNICODE,
+)
+
+
+SPORTS_MEMORIAL_OR_OBITUARY_PATTERNS = (
+    r"\b(?:tributes?\s+(?:are\s+)?paid|"
+    r"pays?\s+tribute|remembering|obituary|dies?|death)\b",
+)
+
+
 SPORTS_EXTERNAL_INCIDENT_PATTERNS = (
     # Disasters and medical incidents are not sport merely
     # because they mention a sports centre or an athletic
@@ -1247,7 +1273,9 @@ CATEGORY_RELEVANCE_PATTERNS = {
         r"\b(?:technology|tech|software|cybersecurity|cyberattack|"
         r"semiconductor|computing|computer|smartphone|"
         r"artificial intelligence|ai|chip|digital|internet|cloud|"
-        r"data|robotics?|telecom|device|hardware|"
+        r"data|robotics?|telecom|device|hardware|peripherals?|"
+        r"keyboards?|computer mice|gaming mice|headsets?|"
+        r"microphones?|studio monitors?|audio equipment|"
         r"operating system|app|platform)\b",
 
         r"(?:तकनीक|प्रौद्योगिकी|सॉफ्टवेयर|साइबर|कंप्यूटर|"
@@ -1367,6 +1395,18 @@ TECHNOLOGY_FINANCIAL_MARKET_PATTERNS = (
 )
 
 
+TECHNOLOGY_META_ANALYSIS_PATTERNS = (
+    # Meta-analysis, rankings and retrospective claims about
+    # Technology or AI are not one current Technology development.
+    r"\bstudy\s+finds?\s*:.{0,180}\b"
+    r"(?:history|paper|not\s+written\s+about)\b",
+
+    r"\b(?:most|least)\s+.{0,80}\bpaper\b"
+    r".{0,160}\b(?:ai|technology)\s+history\b",
+
+    r"\b\d+\s+years?\s+of\s+"
+    r"(?:ai|artificial intelligence|technology)\s+history\b",
+)
 
 HEALTH_SPORTS_AVAILABILITY_PATTERNS = (
     # A player's availability for a match, tour or season is
@@ -1412,6 +1452,63 @@ HEALTH_SPORTS_AVAILABILITY_PATTERNS = (
     r".{0,140}\b"
     r"(?:baja|se perdera|no estara disponible|"
     r"lesionado|lejos de regresar)\b",
+)
+
+
+HEALTH_FINANCIAL_OR_CORPORATE_PATTERNS = (
+    # Share-price, earnings and investor-outlook reports belong
+    # to Business even when the company operates in healthcare.
+    r"\b(?:stocks?|shares?|earnings|revenue|profit|"
+    r"financial\s+results?|outlook|guidance)\b"
+    r".{0,140}\b"
+    r"(?:drops?|falls?|slides?|rises?|gains?|beats?|misses?|"
+    r"disappoints?|cuts?|raises?|downgrades?|upgrades?)\b",
+
+    r"\b(?:drops?|falls?|slides?|rises?|gains?|beats?|misses?|"
+    r"disappoints?|cuts?|raises?|downgrades?|upgrades?)\b"
+    r".{0,140}\b"
+    r"(?:stocks?|shares?|earnings|revenue|profit|"
+    r"financial\s+results?|outlook|guidance)\b",
+)
+
+
+HEALTH_LEGAL_PROCEEDING_PATTERNS = (
+    # Litigation about a health-related company or outbreak is
+    # Legal/Business reporting, not the medical development itself.
+    r"^\s*(?:first\s+)?(?:lawsuit|class\s+action)\b",
+
+    r"\b(?:lawsuit|class\s+action|legal\s+claim|"
+    r"court\s+filing|sues?|suing|settlement)\b",
+)
+
+
+HEALTH_TRANSPORT_OR_LOCATION_INCIDENT_PATTERNS = (
+    # A transport accident does not become Health news merely
+    # because people were injured or taken to a hospital.
+    r"\b(?:aircraft|airbus|airline|airport|plane|flight|jet|"
+    r"car|vehicle|truck|bus|train)\b"
+    r".{0,180}\b"
+    r"(?:turbulence|los(?:e|es|t)\s+altitude|crash|collision|"
+    r"accident|run\s+over|struck|probe|investigation)\b",
+
+    r"\b(?:turbulence|los(?:e|es|t)\s+altitude|crash|collision|"
+    r"accident|run\s+over|struck)\b"
+    r".{0,180}\b"
+    r"(?:aircraft|airbus|airline|airport|plane|flight|jet|"
+    r"car|vehicle|truck|bus|train)\b",
+
+    # A hospital is only the location in these reports.
+    r"\b(?:run\s+over|hit|struck|killed)\b"
+    r".{0,100}\b(?:car|vehicle|truck|bus)\b"
+    r".{0,100}\b(?:hospital|clinic)\s+"
+    r"(?:parking|car\s+park|grounds?)\b",
+
+    # Official aviation response remains Transport/Politics.
+    r"\b(?:civil\s+aviation|aviation\s+minister|"
+    r"airline|airport|flight)\b"
+    r".{0,180}\b"
+    r"(?:visits?|meets?|probe|investigat(?:e|es|ed|ion)|"
+    r"passengers?\s+injured)\b",
 )
 
 
@@ -1548,6 +1645,29 @@ def sports_development_relevant(
     if matches(
         title,
         SPORTS_ENTERTAINMENT_RELEASE_PATTERNS,
+    ):
+        return False
+
+    # Reject a stage name or surname that merely happens to be
+    # a sport word, for example "Jimmy Cricket".
+    if SPORTS_NAME_LOOKALIKE_MEMORIAL_RE.search(
+        title
+    ):
+        return False
+
+    # Some provider titles omit the entertainer's profession,
+    # while the description identifies the person as a comedian,
+    # actor, singer or musician. Use that description only for
+    # memorial/obituary titles so normal sports reports are safe.
+    if (
+        matches(
+            title,
+            SPORTS_MEMORIAL_OR_OBITUARY_PATTERNS,
+        )
+        and matches(
+            description,
+            SPORTS_ENTERTAINMENT_RELEASE_PATTERNS,
+        )
     ):
         return False
 
@@ -4509,28 +4629,62 @@ def category_relevant(
         )
     )
 
-    # Stock-market movement is Business news, not a Technology
-    # development merely because chip stocks led the index.
-    if (
-        target == "technology"
-        and matches(
-            title,
-            TECHNOLOGY_FINANCIAL_MARKET_PATTERNS,
-        )
-    ):
-        return False
+    
+    # Technology requires visible Technology ownership even
+    # when the provider assigned category=technology. This stops
+    # stock reports, vague provider mistakes and retrospective
+    # meta-analysis from being accepted automatically.
+    if target == "technology":
+        if (
+            matches(
+                title,
+                TECHNOLOGY_FINANCIAL_MARKET_PATTERNS,
+            )
+            or matches(
+                title,
+                TECHNOLOGY_META_ANALYSIS_PATTERNS,
+            )
+        ):
+            return False
 
-    # Sports availability and selection stories do not become
-    # Health news merely because an injury, doctor or medical
-    # team is mentioned.
-    if (
-        target == "health"
-        and matches(
-            title,
-            HEALTH_SPORTS_AVAILABILITY_PATTERNS,
+        return matches(
+            title_and_description,
+            CATEGORY_RELEVANCE_PATTERNS[
+                "technology"
+            ],
         )
-    ):
-        return False
+
+    # Health requires an actual medical or public-health signal.
+    # Hard exclusions run before provider verification so a stock
+    # report, lawsuit, transport incident or location-only hospital
+    # mention cannot be rescued by the provider category.
+    if target == "health":
+        if (
+            matches(
+                title,
+                HEALTH_SPORTS_AVAILABILITY_PATTERNS,
+            )
+            or matches(
+                title,
+                HEALTH_FINANCIAL_OR_CORPORATE_PATTERNS,
+            )
+            or matches(
+                title,
+                HEALTH_LEGAL_PROCEEDING_PATTERNS,
+            )
+            or matches(
+                title,
+                HEALTH_TRANSPORT_OR_LOCATION_INCIDENT_PATTERNS,
+            )
+        ):
+            return False
+
+        return matches(
+            title_and_description,
+            CATEGORY_RELEVANCE_PATTERNS[
+                "health"
+            ],
+        )
 
     # Entertainment means a creative work, performer,
     # production, release or audience-performance development.
